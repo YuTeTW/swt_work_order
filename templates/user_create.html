@@ -1,0 +1,184 @@
+<html>
+  <!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>User Create</title>
+        <link href="{{ url_for('static', path='/styles.css')}}" rel="stylesheet">
+        <script type = "text/javascript">
+            let URL = "http://192.168.45.80:8080"
+            let URL_login = "http://192.168.45.80:3000"
+            function myfunction() {
+            name = document.getElementById('name').value,
+            password = document.getElementById('password').value,
+            email = document.getElementById('email').value,
+            address = document.getElementById('address').value,
+            telephone_number = document.getElementById('telephone_number').value,
+            usage = document.getElementById('usage').value,
+            country = document.getElementById('country').value,
+            company_scale = document.getElementById('company_scale').value,
+            industry = document.getElementById('industry').value,
+            email_alert = document.getElementById('email_alert').value,
+            language = document.getElementById('language').value
+            token = document.getElementById('token').value
+            let data = {
+                          "name": name,
+                          "password": password,
+                          "email": email,
+                          "info": {
+                            "address": address,
+                            "telephone_number": telephone_number,
+                            "usage": usage,
+                            "country": country,
+                            "company_scale": company_scale,
+                            "industry": industry,
+                            "email_alert": email_alert,
+                            "language": language
+                          }
+                        }
+            fetch(URL+'/users/create/'+token, {
+                            method: 'POST',
+                            headers: {
+                              'Accept': 'application/json',
+                              'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(data)
+                          }).then(function(response) {
+                            console.log(response.json());
+                            if(response.status == 200){
+                                //alert視窗無法修改style
+                                alert("\n                                                " +
+                                    "創建成功！\n\n" +
+                                    "                              "  +
+                                    "按下「確定」後切換至登入畫面");
+                                window.location.replace(URL_login);
+                            }
+                            else{
+                                alert(response.json());
+                            }
+                          });
+
+            }
+        </script>
+    </head>
+    <body class="all">
+        <div class="box">
+        <input type="label" id="token" value={{token}} hidden>
+        <h1>建 立 您 的 帳 號</h1>
+        <form method="post">
+            <div id="container">
+            </div>
+            <table class="center">
+                <tbody>
+                    <tr>
+                        <td >用戶名</td>
+                        <td class="td">
+                             <div id="container">
+                                <input type="text" id="name">
+                                <p class="lable">*</p>
+                             </div>
+                        </td>
+                    <tr>
+                        <td class="td">密碼</td>
+                        <td class="td">
+                             <div id="container">
+                                <input type="password" id="password">
+                                <p class="lable">*</p>
+                             </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="td">Email</td>
+                        <td class="td"><input type="text" id="email" value="{{email}}" disabled="disabled"></td>
+                    </tr>
+                    <tr>
+                        <td class="td">地址</td>
+                        <td class="td"><input type="text" id="address"></td>
+                    </tr>
+                    <tr>
+                        <td class="td">電話</td>
+                        <td class="td"><input type="text" id="telephone_number"></td>
+                    </tr>
+                    <tr>
+                        <td class="td">使用環境</td>
+                        <td class="td"><input type="text" id="usage"></td>
+                    </tr>
+                    <tr>
+                        <td class="td">國家</td>
+                        <td class="td"><input type="text" id="country"></td>
+                    </tr>
+                    <tr>
+                        <td class="td">公司規模(人數)</td>
+                        <td class="td"><input type="text" id="company_scale"></td>
+                    </tr>
+                    <tr>
+                        <td class="td">產業別</td>
+                        <td class="td"><input type="text" id="industry"></td>
+                    </tr>
+                    <tr>
+                        <td class="td">Email 發警報</td>
+                        <td class="td">
+                            <select id="email_alert" style="width:75px;">
+                                <option value=0 selected >不啟用</option>
+                                <option value="1">啟用</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="td">語言</td>
+                        <td class="td">
+                            <select id="language" style="width:75px;">
+                                <option value=0 selected>中文</option>
+                                <option value="1">English</option>
+                            </select>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <input type="button" value="確  認" onclick="myfunction()"
+            class="btn">
+        </form>
+    </body>
+    <style>
+      #container {
+        overflow: auto;
+        white-space: nowrap;
+      }
+      .lable {
+        display: inline-block;
+        color: red;
+      }
+      .center {
+        margin-left: auto;
+        margin-right: auto;
+      }
+      .td{
+        width: 150px;
+        height: 40px;
+
+      }
+      .all{
+        text-align: center;
+      }
+      .box{
+        margin: auto;
+        margin-top:50px;
+        width: 450px;
+        height: 700px;
+        border: 5px solid rgb(160, 160, 160);
+        border-radius: 10px;
+        background-color: rgb(235, 235, 235);
+      }
+      .btn{
+        margin-top: 40px;
+        width: 320px;
+        height: 30px;
+        font-size: 15px;
+        border: 1px solid rgb(160, 160, 160);
+        border-radius: 5px;
+        background-color: rgb(204, 226, 221);
+        cursor: pointer;
+      }
+    </style>
+    </div>
+</html>
