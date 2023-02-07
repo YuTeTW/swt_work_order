@@ -10,9 +10,9 @@ from app.models.domain.Error_handler import UnicornException
 def create_order_issue(db: Session, order_issue_create):
     if db.query(OrderIssue).filter(OrderIssue.name == order_issue_create.name).first():
         raise HTTPException(status_code=400, detail="Issue name already exist")
-    if not str(order_issue_create.severity).isdigit():
+    if type(order_issue_create.severity) != int or order_issue_create.severity < 0:
         raise HTTPException(status_code=400, detail="Issue severity must be a positive integer")
-    if order_issue_create.time_hours < 0:
+    if order_issue_create.time_hours <= 0:
         raise HTTPException(status_code=400, detail="Issue time hours have to more than 0")
     try:
         db_user = OrderIssue(**order_issue_create.dict())
