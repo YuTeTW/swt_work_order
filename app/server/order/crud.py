@@ -59,18 +59,18 @@ def get_all_order(db: Session):
     order_list = []
     for each_order in order_db:
         order_engineer = db.query(User.name).filter(User.id == each_order.engineer_id).first()
-        status_name = db.query(OrderIssue.name).filter(OrderIssue.id == each_order.order_issue_id).first()
+        issue_name = db.query(OrderIssue.name).filter(OrderIssue.id == each_order.order_issue_id).first()
         engineer_name = order_engineer[0] if order_engineer else "未派發"
         order = OrderViewModel(
             company_name=each_order.company_name,
             serial_number=each_order.serial_number,
             description=each_order.description,
             detail=eval(each_order.detail),
+            engineer_name=engineer_name,
+            issue_name=issue_name[0],
             mark=each_order.mark,
             status=each_order.status,
             created_at=each_order.created_at,
-            engineer_name=engineer_name,
-            status_name=status_name[0]
         )
         order_list.append(order)
     return order_list

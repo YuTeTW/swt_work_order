@@ -59,7 +59,7 @@ class OrderViewModel(OrderBase):
     status: int
     created_at: datetime
     engineer_name: str
-    status_name: str
+    issue_name: str
 
 
 class OrderView2Model(OrderBase):
