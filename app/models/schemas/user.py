@@ -25,14 +25,14 @@ class UserPostViewModel(UserBase):
     class Config:
         schema_extra = {
             "example": {
-                "name": "FastWise",
-                "password": "2023",
-                "email": "2023@fastwise.net",
+                "name": "root",
+                "password": "root",
+                "email": "root@fastwise.net",
                 "info": {
                     "telephone_number": "0987654321",
                     "line_id": "@kadiggec",
                     "note": "nothing",
-                    "office_hours": "8AM-6PM",
+                    "office_hours": "8AM-6PM"
                 }
             }
         }
