@@ -5,14 +5,12 @@ from starlette import status
 from starlette.background import BackgroundTasks
 from app.db.database import get_db
 from app.helper.authentication import authorize_user
-from app.server.send_email import send_forget_password_email
-from app.server.user.crud import check_email_exist, check_user_owner, change_user_level
+# from app.server.send_email import send_forget_password_email
+from app.server.user.crud import check_email_exist
 from app.server.authentication.crud import create_and_set_user_password
 from app.server.authentication import (
     authenticate_user,
     ACCESS_TOKEN_EXPIRE_MINUTES,
-    check_level,
-    AuthorityLevel
 )
 from app.models.schemas.user import (
     UserLoginViewModel,
@@ -57,19 +55,6 @@ def forget_password(background_tasks: BackgroundTasks,
 
     send_forget_password_email(email, password, background_tasks=background_tasks)
     return "Send forget password email done"
-
-
-# 改變權限 Admin
-@router.patch("/auth/users/{user_id}/change", response_model=UserViewModel)
-def change_a_user_level(user_id: int, level: int, db: Session = Depends(get_db),
-                        Authorize: AuthJWT = Depends()):
-    current_user = authorize_user(Authorize, db)
-    if not check_level(current_user, AuthorityLevel.admin.value):
-        raise HTTPException(status_code=401, detail="權限不夠")
-
-    check_user_owner(db, user_id, current_user.group_id)
-
-    return change_user_level(db, user_id, level)
 
 
 # 取得登入User

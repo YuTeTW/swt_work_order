@@ -5,10 +5,10 @@ from app.db.database import Base
 
 
 class OrderMessage(Base):
-    __tablename__ = "order_message"
+    __tablename__ = "order_messages"
     id = Column(Integer, primary_key=True, index=True)
-    order_id = Column(Integer, ForeignKey("order.id"))
-    user_id = Column(Integer, ForeignKey("user.id"))
+    order_id = Column(Integer, ForeignKey("orders.id"))
+    user_id = Column(Integer, ForeignKey("users.id"))
     message = Column(String)
     created_at = Column(DateTime)
     updated_at = Column(DateTime)
@@ -22,6 +22,6 @@ class OrderMessage(Base):
 
 
     def __repr__(self):
-        return 'id={},group_id={}, email={}, name={},info={}'.format(
-            self.id, self.group_id, self.email, self.name, self.info, self.created_at, self.updated_at
+        return 'id={},order_id={}, user_id={}, message={}'.format(
+            self.id, self.order_id, self.user_id, self.message, self.created_at, self.updated_at
         )

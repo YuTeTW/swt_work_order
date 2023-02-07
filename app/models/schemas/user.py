@@ -10,44 +10,10 @@ class UserBase(BaseModel):
 
 
 class UserInfoModel(UserBase):
-    address: str = ""
-    country: str = ""
     telephone_number: str = ""
-    companyScale: str = ""
-    usage: str = ""
-    industry: str = ""
-    email_alert: bool = False
-    device_email_alert: bool = False
-    language: int = 0
-
-
-class AdminUserPostViewModel(UserBase):
-    email: EmailStr
-    password: str
-    name: str
-    info: UserInfoModel
-
-    class Config:
-        schema_extra = {
-            "example": {
-                "name": "ricky400430012",
-                "password": "ricky400430012",
-                "email": "ricky400430012@gmail.com",
-                "info": {
-                    "address": "台北市中山區民權東路一段",
-                    "telephone_number": "0987654321",
-                    "usage": "商用",
-                    "country": "Taiwan",
-                    "company_scale": "10~50",
-                    "industry": "軟體業",
-                    "area": "False",
-                    "language": "0"
-                },
-                "group": {
-                    "name": "ricky_group"
-                }
-            }
-        }
+    line_id: str
+    note: str = ""
+    office_hours: str = ""
 
 
 class UserPostViewModel(UserBase):
@@ -59,18 +25,14 @@ class UserPostViewModel(UserBase):
     class Config:
         schema_extra = {
             "example": {
-                "name": "ricky400430012",
-                "password": "ricky400430012",
-                "email": "ricky400430012@gmail.com",
+                "name": "FastWise",
+                "password": "2023",
+                "email": "2023@fastwise.net",
                 "info": {
-                    "address": "台北市中山區民權東路一段",
                     "telephone_number": "0987654321",
-                    "usage": "商用",
-                    "country": "Taiwan",
-                    "company_scale": "10~50",
-                    "industry": "軟體業",
-                    "area": "False",
-                    "language": "0"
+                    "line_id": "@kadiggec",
+                    "note": "nothing",
+                    "office_hours": "8AM-6PM",
                 }
             }
         }
@@ -82,7 +44,7 @@ class UserPatchInfoModel(UserBase):
     class Config:
         schema_extra = {
             "example": {
-                "name": "ricky4004",
+                "name": "swt",
             }
         }
 
@@ -133,8 +95,8 @@ class UserLoginViewModel(UserBase):
     class Config:
         schema_extra = {
             "example": {
-                "email": "ricky4004@gmail.com",
-                "password": "ricky4004"
+                "email": "swt@fastwise.net",
+                "password": "swt"
             }
         }
 

@@ -110,7 +110,7 @@ def check_level(current_user: User, level):
 
 
 def create_random_password():
-    seed = "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()_ =-"
+    seed = "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
     sa = []
     for i in range(8):
         sa.append(random.choice(seed))

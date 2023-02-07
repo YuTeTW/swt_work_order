@@ -49,13 +49,33 @@ conf = ConnectionConfig(
 #     await fm.send_message(message)
 
 
-async def send_email_async(email: str, verify_code: str):
-    title = "fasteyes verify Code"
+# async def send_email_async(email: str, verify_code: str):
+#     title = "fasteyes verify Code"
+#     template = f"""
+#            <html>
+#                <body>
+#                      <h1>
+#                         認證碼：{verify_code}
+#                      </h1>
+#                </body>
+#            </html>
+#        """
+#     message = MessageSchema(
+#         subject=title,
+#         recipients=[email],
+#         html=template
+#     )
+#     fm = FastMail(conf)
+#     await fm.send_message(message)
+
+
+def send_email(email: str, background_tasks: BackgroundTasks):
+    title = "SWT 工單系統"
     template = f"""
            <html>
                <body>
                      <h1>
-                        認證碼：{verify_code}
+                        已建立一則新工單
                      </h1>
                </body>
            </html>
@@ -63,27 +83,7 @@ async def send_email_async(email: str, verify_code: str):
     message = MessageSchema(
         subject=title,
         recipients=[email],
-        html=template
-    )
-    fm = FastMail(conf)
-    await fm.send_message(message)
-
-
-def send_email(email: str, verify_code: str, background_tasks: BackgroundTasks):
-    title = "fasteyes verify Code"
-    template = f"""
-           <html>
-               <body>
-                     <h1>
-                        認證碼：{verify_code}
-                     </h1>
-               </body>
-           </html>
-       """
-    message = MessageSchema(
-        subject=title,
-        recipients=[email],
-        html=template
+        html=template,
     )
     fm = FastMail(conf)
     background_tasks.add_task(
@@ -183,7 +183,7 @@ def send_forget_password_email(email: str, password: str, background_tasks: Back
                     新密碼：{password}
                 </h1>
             </body>
-        </html>        
+        </html>
     """
 
     message = MessageSchema(

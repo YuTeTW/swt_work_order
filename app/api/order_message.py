@@ -1,49 +1,56 @@
 from fastapi import APIRouter, Depends, HTTPException
-from typing import List
-from starlette.templating import Jinja2Templates
-from starlette.requests import Request
 from fastapi_jwt_auth import AuthJWT
 from sqlalchemy.orm import Session
-from starlette.background import BackgroundTasks
+from typing import List
 
 from app.db.database import get_db
 from app.helper.authentication import authorize_user
-from app.server.authentication import AuthorityLevel, verify_password, check_level, get_email_token
-
-from app.server.send_email import send_invite_mail
-import datetime
-from app.server.user.crud import (
-    create_user,
-    get_user_by_email,
-    get_user_by_name,
-    get_all_users,
-    check_email_exist,
-    modify_user,
-    get_user_by_name_in_group,
-    modify_user_password,
-    change_user_setting,
-    change_user_verify_code_enable,
-    get_users_in_group,
-    get_user_by_id,
-    delete_group_by_group_id,
-    check_user_owner,
-    delete_user_by_user_id,
-    check_RD_user_exist
-)
-from app.models.schemas.user import (
-    UserViewModel,
-    UserPostViewModel,
-    AdminUserPostViewModel,
-    UserPatchInfoModel,
-    UserPatchPasswordViewModel,
-    UserChangeSettingModel,
-    UserInviteViewModel
+from app.server.order_message.crud import (
+    create_order_message,
+    get_all_order_message,
+    delete_order_message_by_id,
+    modify_order_message_by_id
 )
 
+from app.models.schemas.order_message import (
+    OrderMessageCreateModel,
+    OrderMessageViewModel,
+    OrderMessageModifyModel
+)
 router = APIRouter()
-templates = Jinja2Templates(directory="templates")
 
 
-# 取得所有User (RD)
-@router.get("/users/GetAllUsers", response_model=List[UserViewModel])
+# 新增工單訊息
+@router.post("/order_message", response_model=OrderMessageViewModel)
+def create_a_order_message(order_message_create: OrderMessageCreateModel,
+                           Authorize: AuthJWT = Depends(), db: Session = Depends(get_db)):
+    current_user = authorize_user(Authorize, db)
+    if current_user.level > 2:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    return create_order_message(db, current_user.id, order_message_create)
 
+
+# 取得所有工單訊息 (RD)
+@router.get("/order_message", response_model=List[OrderMessageViewModel])
+def get_order(db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
+    authorize_user(Authorize, db)
+    return get_all_order_message(db)
+
+
+# 刪除工單訊息
+@router.delete("/order_message")
+def delete_order(issue_id, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
+    current_user = authorize_user(Authorize, db)
+    if current_user.level > 2:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    delete_order_message_by_id(db, issue_id)
+
+
+# 修改工單訊息
+@router.patch("/order_message")
+def modify_order_message(order_message_modify: OrderMessageModifyModel,
+                         db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
+    current_user = authorize_user(Authorize, db)
+    if current_user.level > 2:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    return modify_order_message_by_id(db, order_message_modify)

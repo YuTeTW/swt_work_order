@@ -1,4 +1,5 @@
 from fastapi import FastAPI, BackgroundTasks
+from starlette.staticfiles import StaticFiles
 from app.api.api_router import router
 from app.db.database import engine, Base
 from starlette.middleware.cors import CORSMiddleware
