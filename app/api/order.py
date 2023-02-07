@@ -37,39 +37,35 @@ router = APIRouter()
 
 
 # 新增工單
+# @router.post("/order",)
 @router.post("/order", response_model=OrderCreateResponseModel)
-async def create_a_order(order_create: OrderCreateModel, background_tasks: BackgroundTasks, client_id: int = 0,
-                   Authorize: AuthJWT = Depends(), db: Session = Depends(get_db)):
+async def create_a_order(order_create: OrderCreateModel, background_tasks: BackgroundTasks, client_id: int = 1,
+                         Authorize: AuthJWT = Depends(), db: Session = Depends(get_db)):
     current_user = authorize_user(Authorize, db)
     user_db = get_user_by_id(db, client_id)
-
+    if current_user.level < 3 and user_db.id == client_id:
+        raise HTTPException(status_code=422, detail="Only create order for client")
     if current_user.level == 3 and user_db.id != client_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
+    order_db = create_order(db, user_db.id, user_db.name, order_create)
 
-    order_db = create_order(db, user_db.id, user_db.name, current_user.email, order_create)
+    # 建單後寄信
     send_email("judhaha@gmail.com", background_tasks)
     return order_db
 
 
-# # 取得所有order (pm)
-# @router.get("/order/all", response_model=List[OrderView2Model])
-# def get_order(db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
-#     current_user = authorize_user(Authorize, db)
-#     if current_user.level > 1:
-#         raise HTTPException(status_code=401, detail="Unauthorized")
-#     all_order = get_all_order(db)
-#     return {"a": 1, "b": 2, "all_order": all_order}
-
-
 # 取得所有order (pm)
 @router.get("/order/all")
-def get_order(db: Session = Depends(get_db)):
+def get_order(db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
+    current_user = authorize_user(Authorize, db)
+    if current_user.level > 1:
+        raise HTTPException(status_code=401, detail="Unauthorized")
     all_order = get_all_order(db)
     return all_order
 
 
 # 取得部分order (RD)
-@router.get("/order", response_model=List[OrderViewModel])
+@router.get("/order")
 def get_some_orders(filter_body: OrderFilterBodyModel, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
     if current_user.level > 1 and filter_body.user_id:
@@ -140,7 +136,7 @@ async def upload_picture(order_id: int, file: UploadFile,
     current_user = authorize_user(Authorize, db)
     if current_user.level in (1, 2):
         raise HTTPException(status_code=401, detail="Unauthorized")
-    return await upload_picture_to_folder(order_id, file)
+    return await upload_picture_to_folder(db, order_id, file)
 
 
 # 下載照片
@@ -153,7 +149,7 @@ async def download_picture(order_id: int,
 
 # 刪除照片
 @router.delete("/order/picture")
-async def download_picture(order_id: int,
+async def download_picture(order_id: int, file_name,
                            db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     authorize_user(Authorize, db)
-    return delete_picture_from_folder(order_id)
+    return delete_picture_from_folder(db, order_id, file_name)

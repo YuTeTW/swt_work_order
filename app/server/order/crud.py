@@ -2,7 +2,7 @@ import os
 
 from fastapi import HTTPException, Response
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
+from sqlalchemy import and_, case
 from datetime import datetime
 
 from app.models.domain.Error_handler import UnicornException
@@ -12,10 +12,8 @@ from app.models.domain.user import User
 from app.models.schemas.order import OrderModifyModel, OrderViewModel
 
 
-def create_order(db: Session, client_id, company_name, email, order_create):
+def create_order(db: Session, client_id, company_name, order_create):
     try:
-        # order_db = db.query(Order).filter(Order.client_id == client_id).order_by(Order.serial_number).all()
-        # db_user = Order(**order_create.dict(),
         db_order = Order(order_issue_id=order_create.order_issue_id,
                          serial_number=order_create.serial_number,
                          description=order_create.description,
@@ -24,12 +22,14 @@ def create_order(db: Session, client_id, company_name, email, order_create):
                          status=0,
                          engineer_id=0,
                          mark=False,
-                         company_name=company_name
+                         company_name=company_name,
+                         file_name=str([])
                          )
         db.add(db_order)
         db.commit()
         db.refresh(db_order)
         db_order.detail = eval(db_order.detail)  # 因sqlite不能用Array存，所以先轉str，再轉list輸出
+        db_order.file_name = eval(db_order.file_name)  # 因sqlite不能用Array存，所以先轉str，再轉list輸出
     except Exception as e:
         db.rollback()
         print(str(e))
@@ -43,53 +43,60 @@ def get_order_by_user_id(db: Session, user_id):
 
 
 def get_all_order(db: Session):
-    order_db = db.query(Order).all()
-    # engineer_name_list = []
-    # for each_order in order_db:
-    #     order_dbb = db.query(User.name).filter(User.id == each_order.engineer_id).first()
-    #     if order_dbb:
-    #         order_dbb = order_dbb[0]
-    #     engineer_name_list.append(order_dbb)
-    # print(engineer_name_list)
-    return order_db
-
-
-def get_all_order(db: Session):
-    order_db = db.query(Order).all()
-    order_list = []
-    for each_order in order_db:
-        order_engineer = db.query(User.name).filter(User.id == each_order.engineer_id).first()
-        issue_name = db.query(OrderIssue.name).filter(OrderIssue.id == each_order.order_issue_id).first()
-        engineer_name = order_engineer[0] if order_engineer else "未派發"
+    order_list = list()
+    order_db = db.query(Order, User.name, OrderIssue.name).outerjoin(User, Order.engineer_id == User.id).outerjoin(
+        OrderIssue, Order.order_issue_id == OrderIssue.id).all()
+    for each_order, engineer_name, issue_name in order_db:
+        engineer_name = engineer_name if engineer_name else "未指派"
         order = OrderViewModel(
             company_name=each_order.company_name,
             serial_number=each_order.serial_number,
             description=each_order.description,
             detail=eval(each_order.detail),
             engineer_name=engineer_name,
-            issue_name=issue_name[0],
+            issue_name=issue_name,
             mark=each_order.mark,
             status=each_order.status,
             created_at=each_order.created_at,
+            file_name=eval(each_order.file_name)
         )
         order_list.append(order)
     return order_list
 
+    # plan B 用pandas
+    # import pandas as pd
+    #
+    # order_db = db.query(Order, User.name, OrderIssue.name).outerjoin(User, Order.engineer_id == User.id).outerjoin(
+    #     OrderIssue, Order.order_issue_id == OrderIssue.id).all()
+    #
+    # df = pd.DataFrame(order_db, columns=['Order', 'engineer_name', 'issue_name'])
+    # df['engineer_name'] = df['engineer_name'].fillna("未指派")
+
+
 
 def get_some_order(db: Session, user_id_list=None, engineer_id_list=None, order_issue_id_list=None, status_list=None):
-    # query = db.query(Order, User).join(User, Order.engineer_id == User.id)
+    order_db = db.query(Order, User.name, OrderIssue.name).filter(
+        Order.engineer_id == User.id, Order.order_issue_id == OrderIssue.id).filter(
+        Order.client_id.in_(user_id_list), Order.engineer_id.in_(engineer_id_list),
+        Order.order_issue_id.in_(order_issue_id_list), Order.status.in_(status_list))
+    order_list = []
+    for each_order, engineer_name, issue_name in order_db:
+        order_list.append(
+            OrderViewModel(
+                company_name=each_order.company_name,
+                serial_number=each_order.serial_number,
+                description=each_order.description,
+                detail=eval(each_order.detail),
+                engineer_name=engineer_name or "未派发",
+                issue_name=issue_name,
+                mark=each_order.mark,
+                status=each_order.status,
+                created_at=each_order.created_at,
+                file_name=eval(each_order.file_name)
+            )
+        )
 
-    order_db = db.query(Order)
-    if user_id_list:
-        order_db = order_db.filter(Order.client_id.in_(user_id_list))
-    if engineer_id_list:
-        order_db = order_db.filter(Order.engineer_id.in_(engineer_id_list))
-    if order_issue_id_list:
-        order_db = order_db.filter(Order.order_issue_id.in_(order_issue_id_list))
-    if status_list:
-        order_db = order_db.filter(Order.status.in_(status_list))
-
-    return order_db.all()
+    return order_list
 
 
 def check_order_status(db: Session, order_id_list):
@@ -169,21 +176,30 @@ def modify_order_principal_engineer_by_id(db: Session, order_id: int, engineer_i
             "updated_at": datetime.now()
         }
     )
-
     db.commit()
     return order_db
 
 
-async def upload_picture_to_folder(order_id, file):
-    file_path = os.getcwd() + "/db_image/order_pic_name_by_id/"
-    if not os.path.isdir(file_path):
-        os.makedirs(file_path)
+async def upload_picture_to_folder(db: Session, order_id, picture_file):
+    file_dir = os.path.join(os.getcwd(), "db_image/order_pic_name_by_id/")
+    os.makedirs(file_dir, exist_ok=True)
+    order = db.query(Order).filter_by(id=order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
     try:
-        with open(file_path + str(order_id) + ".jpg", "wb") as f:
-            f.write(await file.read())
-        return {"message": "image uploaded successfully"}
+        file_names = eval(order.file_name)
+        if picture_file.filename not in file_names:
+            file_names.append(picture_file.filename)
+            order.file_name = str(file_names)
+            order.updated_at = datetime.now()
+            db.commit()
+        file_path = os.path.join(file_dir, picture_file.filename)
+        with open(file_path, "wb") as f:
+            f.write(await picture_file.read())
     except Exception as e:
+        print(str(e))
         raise HTTPException(status_code=500, detail="Failed to upload image")
+    return {"message": "Image uploaded successfully"}
 
 
 def download_picture_from_folder(order_id):
@@ -198,13 +214,20 @@ def download_picture_from_folder(order_id):
         raise HTTPException(status_code=500, detail="Failed to download image")
 
 
-def delete_picture_from_folder(order_id):
-    file_path = os.getcwd() + "/db_image/order_pic_name_by_id/" + str(order_id) + ".jpg"
+def delete_picture_from_folder(db: Session, order_id, file_name):
+    file_path = os.getcwd() + "/db_image/order_pic_name_by_id/" + str(file_name)
+    order = db.query(Order).filter_by(id=order_id).first()
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Image doesn't exist.")
     else:
         try:
             os.remove(file_path)
+            file_names = eval(order.file_name)
+            if file_name in file_names:
+                file_names.remove(file_name)
+                order.file_name = str(file_names)
+                order.updated_at = datetime.now()
+                db.commit()
         except Exception as e:
             raise HTTPException(status_code=500, detail="Failed to Delete image")
     return "Image deleted successfully"

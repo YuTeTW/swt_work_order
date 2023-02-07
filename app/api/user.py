@@ -90,12 +90,14 @@ def patch_user_password(userPatch: UserPatchPasswordViewModel, db: Session = Dep
 
 # user id 修改 User is_enable (HRAccess)
 @router.patch("/user/is_enable", response_model=UserViewModel)
-def patch_user_verify_code_enable(is_enable: bool, db: Session = Depends(get_db),
+def patch_user_verify_code_enable(user_id: int, is_enable: bool, db: Session = Depends(get_db),
                                   Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
     if current_user.level > 1:
         raise HTTPException(status_code=401, detail="權限不夠")
-    return change_user_is_enable(db, current_user.id, is_enable)
+    if user_id < 2:
+        raise HTTPException(status_code=401, detail="權限不夠")
+    return change_user_is_enable(db, user_id, is_enable)
 
 
 # 刪除 user

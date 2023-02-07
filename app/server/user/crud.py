@@ -2,12 +2,10 @@ from datetime import datetime
 from fastapi import HTTPException
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
-from app.db.database import get_db
 
 from app.models.domain.Error_handler import UnicornException
 from app.models.domain.user import User
-from app.models.schemas.user import UserPatchPasswordViewModel, UserPostViewModel, UserPatchInfoModel, \
-    UserChangeSettingModel
+from app.models.schemas.user import UserPatchPasswordViewModel, UserPostViewModel, UserPatchInfoModel
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -25,7 +23,8 @@ def get_all_client_users(db: Session):
 
 
 def get_user_by_id(db: Session, user_id: int):
-    return db.query(User).filter(User.id == user_id).first()
+    user_db = db.query(User).filter(User.id == user_id).first()
+    return user_db
 
 
 def check_user_exist(db: Session, user_id: int):
@@ -54,12 +53,12 @@ def change_user_is_enable(db: Session, user_id: int, is_enable: bool):
     user_db = db.query(User).filter(User.id == user_id).first()
     if user_db is None:
         raise HTTPException(status_code=404, detail="user not exist")
-    db.begin()
+    # db.begin()
     try:
         user_db.is_enable = is_enable
         user_db.updated_at = datetime.now()
         db.commit()
-        db.refresh(user_db)
+        # db.refresh(user_db)
 
     except Exception as e:
         db.rollback()
@@ -72,7 +71,6 @@ def modify_user_password(db: Session, user_id: int, userPatch: UserPatchPassword
     user_db = db.query(User).filter(User.id == user_id).first()
     if user_db is None:
         raise HTTPException(status_code=404, detail="user not exist")
-    db.begin()
     try:
         hashed_password = get_password_hash(userPatch.new_password)
         user_db.password = hashed_password
@@ -170,7 +168,6 @@ def change_user_level(db: Session, user_id: int, level: int):
 
 
 def delete_user_by_user_id(db: Session, user_id: int):
-    db.begin()
     try:
         user_db = db.query(User).filter(User.id == user_id).first()
         db.delete(user_db)
@@ -179,5 +176,5 @@ def delete_user_by_user_id(db: Session, user_id: int):
         db.rollback()
         print(str(e))
         raise UnicornException(name=delete_user_by_user_id.__name__, description=str(e), status_code=500)
-    return user_db
+    return "User deleted successfully"
 

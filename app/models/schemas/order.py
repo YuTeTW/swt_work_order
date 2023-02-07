@@ -53,13 +53,14 @@ class OrderViewinfoModel(OrderBase):
 class OrderViewModel(OrderBase):
     company_name: str
     serial_number: str
-    description: str
-    detail: list
     mark: bool
     status: int
-    created_at: datetime
     engineer_name: str
     issue_name: str
+    file_name: list
+    description: str
+    detail: list
+    created_at: datetime
 
 
 class OrderView2Model(OrderBase):
