@@ -7,7 +7,7 @@ from app.db.database import get_db
 from app.helper.authentication import authorize_user
 from app.server.order_message.crud import (
     create_order_message,
-    get_all_order_message,
+    get_order_message_by_order_id,
     delete_order_message_by_id,
     modify_order_message_by_id
 )
@@ -30,11 +30,11 @@ def create_a_order_message(order_message_create: OrderMessageCreateModel,
     return create_order_message(db, current_user.id, order_message_create)
 
 
-# 取得所有工單訊息 (RD)
+# 取得工單訊息 (RD)
 @router.get("/order_message", response_model=List[OrderMessageViewModel])
-def get_order(db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
+def get_order(order_id: int, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     authorize_user(Authorize, db)
-    return get_all_order_message(db)
+    return get_order_message_by_order_id(db, order_id)
 
 
 # 刪除工單訊息

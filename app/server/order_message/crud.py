@@ -20,8 +20,8 @@ def create_order_message(db: Session, user_id, order_message_create):
     return db_user
 
 
-def get_all_order_message(db: Session):
-    return db.query(OrderMessage).all()
+def get_order_message_by_order_id(db: Session, order_id: int):
+    return db.query(OrderMessage).filter(OrderMessage.order_id == order_id).all()
 
 
 def delete_order_message_by_id(db: Session, issue_id: int):
