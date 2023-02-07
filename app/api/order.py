@@ -38,12 +38,12 @@ router = APIRouter()
 
 # 新增工單
 @router.post("/order", response_model=OrderCreateResponseModel)
-async def create_a_order(order_create: OrderCreateModel, background_tasks: BackgroundTasks, user_id: int = 0,
+async def create_a_order(order_create: OrderCreateModel, background_tasks: BackgroundTasks, client_id: int = 0,
                    Authorize: AuthJWT = Depends(), db: Session = Depends(get_db)):
     current_user = authorize_user(Authorize, db)
-    user_db = get_user_by_id(db, user_id)
+    user_db = get_user_by_id(db, client_id)
 
-    if current_user.level == 3 and user_db.id != user_id:
+    if current_user.level == 3 and user_db.id != client_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     order_db = create_order(db, user_db.id, user_db.name, current_user.email, order_create)
@@ -59,7 +59,6 @@ async def create_a_order(order_create: OrderCreateModel, background_tasks: Backg
 #         raise HTTPException(status_code=401, detail="Unauthorized")
 #     all_order = get_all_order(db)
 #     return {"a": 1, "b": 2, "all_order": all_order}
-
 
 
 # 取得所有order (pm)
