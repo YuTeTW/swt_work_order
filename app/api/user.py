@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.helper.authentication import authorize_user
 from app.server.authentication import AuthorityLevel, verify_password, check_level
-
+from app.server.authentication.crud import set_user_enable
 from app.server.user.crud import (
     create_user,
     get_user_by_email,
@@ -16,11 +16,11 @@ from app.server.user.crud import (
     delete_user_by_user_id,
     check_root_exist,
     check_user_exist,
-    get_user_by_id, change_user_is_enable
+    get_user_by_id
 )
 from app.models.schemas.user import (
     UserViewModel,
-    UserPostViewModel,
+    UserCreateModel,
     UserPatchInfoModel,
     UserPatchPasswordViewModel,
 )
@@ -30,19 +30,19 @@ router = APIRouter()
 
 # 創建 User
 @router.post("/user/create", response_model=UserViewModel)
-def create_a_user(user_create: UserPostViewModel, level: int,
+def create_a_user(user_create: UserCreateModel,
                   Authorize: AuthJWT = Depends(), db: Session = Depends(get_db)):
     current_user = authorize_user(Authorize, db)
-    if level > 3 or level < 1:
+    if user_create.level > 3 or user_create.level < 1:
         raise HTTPException(status_code=405, detail="Method Not Allowed")
 
-    if current_user.level >= level or current_user.level >= 2:
+    if current_user.level >= user_create.level or current_user.level >= 2:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     if get_user_by_email(db, email=user_create.email):
         raise HTTPException(status_code=400, detail="Email already registered")
 
-    user_db = create_user(db, user_create, level)
+    user_db = create_user(db, user_create)
     return user_db
 
 
@@ -69,11 +69,14 @@ def get_all_user(db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
 
 
 # user id 修改 User Info(HRAccess)
+# @router.patch("/user/info")
 @router.patch("/user/info", response_model=UserViewModel)
 def patch_user_info(user_patch: UserPatchInfoModel,
                     db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
-    return modify_user(db, current_user, user_patch)
+    if current_user.level >= user_patch.level or current_user.level > 1:
+        raise HTTPException(status_code=401, detail="權限不夠")
+    return modify_user(db, user_patch)
 
 
 # user id 修改 密碼 (HRAccess)
@@ -97,11 +100,11 @@ def patch_user_verify_code_enable(user_id: int, is_enable: bool, db: Session = D
         raise HTTPException(status_code=401, detail="權限不夠")
     if user_id < 2:
         raise HTTPException(status_code=401, detail="權限不夠")
-    return change_user_is_enable(db, user_id, is_enable)
+    return set_user_enable(db, user_id, is_enable)
 
 
 # 刪除 user
-@router.delete("/user", response_model=UserViewModel)
+@router.delete("/user")
 def delete_a_user(user_id: int,
                   db: Session = Depends(get_db),
                   Authorize: AuthJWT = Depends()):
@@ -122,7 +125,7 @@ def delete_a_user(user_id: int,
 #######################################################################################################################
 # 創建 root
 @router.post("/user/root", response_model=UserViewModel)
-def create_root(user_data: UserPostViewModel, db: Session = Depends(get_db)):
+def create_root(user_data: UserCreateModel, db: Session = Depends(get_db)):
     check_root_exist(db)
     if check_root_exist(db):
         raise HTTPException(status_code=400, detail="root already exist")

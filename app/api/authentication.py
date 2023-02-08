@@ -3,9 +3,10 @@ from fastapi_jwt_auth import AuthJWT
 from sqlalchemy.orm import Session
 from starlette import status
 from starlette.background import BackgroundTasks
+
 from app.db.database import get_db
 from app.helper.authentication import authorize_user
-# from app.server.send_email import send_forget_password_email
+from app.server.send_email import send_forget_password_email
 from app.server.user.crud import check_email_exist
 from app.server.authentication.crud import create_and_set_user_password
 from app.server.authentication import (

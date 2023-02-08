@@ -14,11 +14,10 @@ def check_user_email_enable(db: Session, user_email: str):
         raise HTTPException(status_code=202, detail="user 已啟用了")
 
 
-def set_user_enable(db: Session, user_email: str):
+def set_user_enable(db: Session, user_email: str, is_enable: bool):
     user_db = db.query(User).filter(User.email == user_email).first()
-    db.begin()
     try:
-        user_db.is_enable = True
+        user_db.is_enable = is_enable
         user_db.updated_at = datetime.now()
         db.commit()
         db.refresh(user_db)
@@ -33,7 +32,6 @@ def create_and_set_user_password(db: Session, user_email: str):
     user_db = db.query(User).filter(User.email == user_email).first()
     password = create_random_password()
     hashed_password = get_password_hash(password)
-    db.begin()
     try:
         user_db.password = hashed_password
         user_db.updated_at = datetime.now()

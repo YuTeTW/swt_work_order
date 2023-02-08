@@ -11,12 +11,13 @@ class UserBase(BaseModel):
 
 class UserInfoModel(UserBase):
     telephone_number: str = ""
-    line_id: str
+    line: str
     note: str = ""
     office_hours: str = ""
 
 
-class UserPostViewModel(UserBase):
+class UserCreateModel(UserBase):
+    level: int
     email: EmailStr
     password: str
     name: str
@@ -25,26 +26,39 @@ class UserPostViewModel(UserBase):
     class Config:
         schema_extra = {
             "example": {
+                "level": 2,
                 "name": "root",
-                "password": "root",
                 "email": "root@fastwise.net",
+                "password": "root",
                 "info": {
+                    "contact_email": "root@fastwise.net",
                     "telephone_number": "0987654321",
-                    "line_id": "@kadiggec",
+                    "line": "@kadiggec",
                     "note": "nothing",
-                    "office_hours": "8AM-6PM"
                 }
             }
         }
 
 
 class UserPatchInfoModel(UserBase):
+    user_id: int
+    level: int
     name: str
+    contact_email: str
+    telephone_number: str = ""
+    line: str
+    note: str = ""
 
     class Config:
         schema_extra = {
             "example": {
-                "name": "swt",
+                "user_id": 1,
+                "level": 3,
+                "name": "root",
+                "contact_email": "test@fastwise.net",
+                "telephone_number": "0987654321",
+                "line": "@kadiggec",
+                "note": "nothing"
             }
         }
 
@@ -63,16 +77,6 @@ class UserChangeSettingModel(UserBase):
             }
         }
 
-
-# class UserPatchAccountViewModel(UserBase):
-#     email: EmailStr
-#
-#     class Config:
-#         schema_extra = {
-#             "example": {
-#                 "email": "ricky400430012@fastwise.net",
-#             }
-#         }
 
 
 class UserPatchPasswordViewModel(UserBase):
