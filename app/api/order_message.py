@@ -26,6 +26,7 @@ def create_a_order_message(order_message_create: OrderMessageCreateModel, user_i
                            Authorize: AuthJWT = Depends(), db: Session = Depends(get_db)):
     current_user = authorize_user(Authorize, db)
     reporter_user_id = current_user.id if current_user.level != 0 else user_id
+    print(reporter_user_id)
     if current_user.level > 2:
         raise HTTPException(status_code=401, detail="Unauthorized")
     return create_order_message(db, reporter_user_id, order_message_create)

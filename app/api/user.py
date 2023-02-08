@@ -51,7 +51,7 @@ def create_a_user(user_create: UserCreateModel,
 def get_a_user_by_id(user_id: int, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 
-    if not check_level(current_user, AuthorityLevel.admin.value):
+    if not check_level(current_user, AuthorityLevel.pm.value):
         raise HTTPException(status_code=401, detail="權限不夠")
 
     return get_user_by_id(db, user_id)
@@ -62,7 +62,7 @@ def get_a_user_by_id(user_id: int, db: Session = Depends(get_db), Authorize: Aut
 def get_all_user(db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 
-    if not check_level(current_user, AuthorityLevel.admin.value):
+    if not check_level(current_user, AuthorityLevel.pm.value):
         raise HTTPException(status_code=401, detail="權限不夠")
 
     return get_all_users(db)
@@ -109,7 +109,7 @@ def delete_a_user(user_id: int,
                   db: Session = Depends(get_db),
                   Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
-    if not check_level(current_user, AuthorityLevel.admin.value):
+    if not check_level(current_user, AuthorityLevel.pm.value):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     be_deleted_user = check_user_exist(db, user_id)

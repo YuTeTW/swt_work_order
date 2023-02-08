@@ -31,7 +31,7 @@ credentials_exception = HTTPException(
 
 class AuthorityLevel(Enum):
     root = 0
-    admin = 1
+    pm = 1
     engineer = 2
     client = 3
 

@@ -4,8 +4,11 @@ from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
 from app.models.domain.Error_handler import UnicornException
+from app.models.domain.order import Order
+from app.models.domain.order_message import OrderMessage
 from app.models.domain.user import User
 from app.models.schemas.user import UserPatchPasswordViewModel, UserCreateModel, UserPatchInfoModel
+from app.server.authentication import AuthorityLevel
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -141,6 +144,9 @@ def change_user_level(db: Session, user_id: int, level: int):
 def delete_user_by_user_id(db: Session, user_id: int):
     try:
         user_db = db.query(User).filter(User.id == user_id).first()
+        db.query(OrderMessage).filter(OrderMessage.user_id == user_id).delete()
+        db.query(Order).filter(Order.client_id == user_id).delete()
+        db.query(Order).filter(Order.engineer_id == user_id).delete()
         db.delete(user_db)
         db.commit()
     except Exception as e:
