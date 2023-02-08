@@ -10,10 +10,10 @@ class UserBase(BaseModel):
 
 
 class UserInfoModel(UserBase):
+    contact_email: str = ""
     telephone_number: str = ""
-    line: str
+    line_id: str
     note: str = ""
-    office_hours: str = ""
 
 
 class UserCreateModel(UserBase):
@@ -33,7 +33,7 @@ class UserCreateModel(UserBase):
                 "info": {
                     "contact_email": "root@fastwise.net",
                     "telephone_number": "0987654321",
-                    "line": "@kadiggec",
+                    "line_id": "@kadiggec",
                     "note": "nothing",
                 }
             }
@@ -57,7 +57,7 @@ class UserPatchInfoModel(UserBase):
                 "name": "root",
                 "contact_email": "test@fastwise.net",
                 "telephone_number": "0987654321",
-                "line": "@kadiggec",
+                "line_id": "@kadiggec",
                 "note": "nothing"
             }
         }
