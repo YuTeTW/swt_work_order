@@ -22,12 +22,13 @@ router = APIRouter()
 
 # 新增工單訊息
 @router.post("/order_message", response_model=OrderMessageViewModel)
-def create_a_order_message(order_message_create: OrderMessageCreateModel,
+def create_a_order_message(order_message_create: OrderMessageCreateModel, user_id: int,
                            Authorize: AuthJWT = Depends(), db: Session = Depends(get_db)):
     current_user = authorize_user(Authorize, db)
+    reporter_user_id = current_user.id if current_user.level != 0 else user_id
     if current_user.level > 2:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    return create_order_message(db, current_user.id, order_message_create)
+    return create_order_message(db, reporter_user_id, order_message_create)
 
 
 # 取得工單訊息 (RD)

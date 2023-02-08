@@ -48,7 +48,7 @@ async def create_a_order(order_create: OrderCreateModel, background_tasks: Backg
     order_db = create_order(db, user_db.id, user_db.name, order_create)
 
     # 建單後寄信
-    send_email("judhaha@gmail.com", background_tasks)
+    # send_email("judhaha@gmail.com", background_tasks)
     return order_db
 
 
