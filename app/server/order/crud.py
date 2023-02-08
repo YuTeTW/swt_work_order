@@ -163,7 +163,7 @@ def modify_order_principal_engineer_by_id(db: Session, order_id: int, engineer_i
         raise UnicornException(
             name=modify_order_principal_engineer_by_id.__name__, description='order not found', status_code=404)
 
-    status = 1 if order_db.staus == 0 else order_db.staus
+    status = 1 if order_db.status == 0 else order_db.status
 
     order_db = db.query(Order).filter(Order.id == order_id).update(
         {
