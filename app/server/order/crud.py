@@ -148,12 +148,9 @@ def modify_order_status_by_id(db: Session, order_id: int, status: int):
     if not order_db:
         raise UnicornException(
             name=modify_order_principal_engineer_by_id.__name__, description='order not found', status_code=404)
-    order_db = db.query(Order).filter(Order.id == order_id).update(
-        {
-            "status": status,
-            "updated_at": datetime.now()
-        }
-    )
+    order_db.status = status
+    order_db.updated = datetime.now()
+    db.commit()
     return order_db
 
 
@@ -164,14 +161,9 @@ def modify_order_principal_engineer_by_id(db: Session, order_id: int, engineer_i
             name=modify_order_principal_engineer_by_id.__name__, description='order not found', status_code=404)
 
     status = 1 if order_db.status == 0 else order_db.status
-
-    order_db = db.query(Order).filter(Order.id == order_id).update(
-        {
-            "engineer_id": engineer_id,
-            "status": status,
-            "updated_at": datetime.now()
-        }
-    )
+    order_db.engineer_id = engineer_id
+    order_db.status = status
+    order_db.updated = datetime.now()
     db.commit()
     return order_db
 

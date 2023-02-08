@@ -109,7 +109,8 @@ def modify_order_status(order_id: int, status: int, background_tasks: Background
     now_status = check_order_status(db, [order_id])
     order_db = check_modify_status_permission(current_user, now_status, status)
     modify_order_status_by_id(db, order_id, status)
-    send_email("judhaha@gmail.com", background_tasks)
+
+    # send_email("judhaha@gmail.com", background_tasks)
     return order_db
 
 

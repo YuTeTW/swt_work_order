@@ -129,6 +129,6 @@ def create_root(user_data: UserCreateModel, db: Session = Depends(get_db)):
     check_root_exist(db)
     if check_root_exist(db):
         raise HTTPException(status_code=400, detail="root already exist")
-    user_db = create_user(db, user_data, level=AuthorityLevel.root.value)
+    user_db = create_user(db, user_data)
 
     return user_db
