@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi_jwt_auth import AuthJWT
 from sqlalchemy.orm import Session
-from typing import List
 from starlette.background import BackgroundTasks
 
 from app.db.database import get_db
@@ -25,9 +24,8 @@ from app.models.schemas.order import (
     OrderCreateModel,
     OrderCreateResponseModel,
     OrderFilterBodyModel,
-    OrderViewModel,
     OrderDeleteIdModel,
-    OrderModifyModel, OrderView2Model
+    OrderModifyModel
 )
 from app.server.send_email import send_email
 from app.server.user.crud import (
@@ -43,7 +41,7 @@ async def create_a_order(order_create: OrderCreateModel, background_tasks: Backg
                          Authorize: AuthJWT = Depends(), db: Session = Depends(get_db)):
     current_user = authorize_user(Authorize, db)
     user_db = get_user_by_id(db, client_id)
-    if current_user.level < 3 and user_db.id == client_id:
+    if current_user.level < 3 and current_user.id == client_id:
         raise HTTPException(status_code=422, detail="Only create order for client")
     if current_user.level == 3 and user_db.id != client_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -149,7 +147,7 @@ async def download_picture(order_id: int,
 
 # 刪除照片
 @router.delete("/order/picture")
-async def download_picture(order_id: int, file_name,
+async def download_picture(order_id: int, file_name: str,
                            db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     authorize_user(Authorize, db)
     return delete_picture_from_folder(db, order_id, file_name)

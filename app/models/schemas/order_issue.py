@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Union
 
 
 class OrderBase(BaseModel):
@@ -10,7 +11,7 @@ class OrderBase(BaseModel):
 class OrderIssueCreateModel(OrderBase):
     name: str
     severity: int
-    time_hours: float
+    time_hours: Union[int, float]
 
     class Config:
         schema_extra = {
