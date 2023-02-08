@@ -33,7 +33,6 @@ def create_and_set_user_password(db: Session, user_email: str):
     user_db = db.query(User).filter(User.email == user_email).first()
     password = create_random_password()
     hashed_password = get_password_hash(password)
-
     db.begin()
     try:
         user_db.password = hashed_password
@@ -45,6 +44,3 @@ def create_and_set_user_password(db: Session, user_email: str):
         print(str(e))
         raise UnicornException(name=create_and_set_user_password.__name__, description=str(e), status_code=500)
     return password
-
-
-

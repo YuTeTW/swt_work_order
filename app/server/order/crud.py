@@ -2,7 +2,7 @@ import os
 
 from fastapi import HTTPException, Response
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, case
+from sqlalchemy import and_
 from datetime import datetime
 
 from app.models.domain.Error_handler import UnicornException
@@ -122,15 +122,11 @@ def modify_order_by_id(db: Session, order_modify: OrderModifyModel):
     order_db = db.query(Order).filter(Order.id == order_modify.order_id)
     if not order_db.first():
         raise UnicornException(name=modify_order_by_id.__name__, description='order not found', status_code=404)
-    order_db.update(
-        {
-            "order_issue_id": order_modify.order_issue_id,
-            "serial_number": order_modify.serial_number,
-            "description": order_modify.description,
-            "detail": order_modify.detail,
-            "updated_at": datetime.now()
-        }
-    )
+    order_db.order_issue_id = order_modify.order_issue_id
+    order_db.serial_number = order_modify.serial_number
+    order_db.description = order_modify.description
+    order_db.detail = order_modify.detail
+    order_db.updated_at = datetime.now()
     db.commit()
     return order_db
 
