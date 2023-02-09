@@ -41,20 +41,21 @@ def login(user_data: UserLoginViewModel, Authorize: AuthJWT = Depends(), db: Ses
         access_token = Authorize.create_access_token(subject=user.email, expires_time=ACCESS_TOKEN_EXPIRE_MINUTES)
         refresh_token = Authorize.create_refresh_token(subject=user.email)
 
-        return {"User": user, "Status": user.is_enable, "access_token": access_token,
+        return {"User": user, "is_enable": user.is_enable, "access_token": access_token,
                 "refresh_token": refresh_token, "token_type": "bearer"}
 
 
 # 忘記密碼寄信
 @router.post("/auth/forget_password")
-def forget_password(background_tasks: BackgroundTasks,
-                    email: str, db: Session = Depends(get_db)):
-    if not check_email_exist(db, email):
-        return "Email is not exist"
-
-    password = create_and_set_user_password(db, email)
-
-    send_forget_password_email(email, password, background_tasks=background_tasks)
+def forget_password(send_to_email: str, forget_account: str, background_tasks: BackgroundTasks,
+                    Authorize: AuthJWT = Depends(), db: Session = Depends(get_db)):
+    current_user = authorize_user(Authorize, db)
+    if current_user.level > 1:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    if not check_email_exist(db, forget_account):
+        return "Account is not exist"
+    password = create_and_set_user_password(db, forget_account)
+    send_forget_password_email(send_to_email, password, background_tasks=background_tasks)
     return "Send forget password email done"
 
 

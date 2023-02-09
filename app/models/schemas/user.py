@@ -21,6 +21,7 @@ class UserCreateModel(UserBase):
     email: EmailStr
     password: str
     name: str
+    status: int
     info: UserInfoModel
 
     class Config:
@@ -30,6 +31,7 @@ class UserCreateModel(UserBase):
                 "name": "root",
                 "email": "root@fastwise.net",
                 "password": "root",
+                "status": 1,
                 "info": {
                     "contact_email": "root@fastwise.net",
                     "telephone_number": "0987654321",
@@ -44,6 +46,7 @@ class UserPatchInfoModel(UserBase):
     user_id: int
     level: int
     name: str
+    status: int
     contact_email: str
     telephone_number: str = ""
     line: str
@@ -54,6 +57,7 @@ class UserPatchInfoModel(UserBase):
             "example": {
                 "user_id": 1,
                 "level": 3,
+                "status": 1,
                 "name": "root",
                 "contact_email": "test@fastwise.net",
                 "telephone_number": "0987654321",
@@ -111,13 +115,14 @@ class UserViewModel(UserBase):
     name: str
     info: UserInfoModel
     level: int
+    status: int
     created_at: datetime
     updated_at: datetime
 
 
 class LoginResultUserViewModel(UserBase):
     User: UserViewModel
-    Status: bool
+    is_enable: bool
     access_token: str
     refresh_token: str
     token_type: str

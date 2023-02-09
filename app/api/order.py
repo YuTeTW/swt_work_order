@@ -125,6 +125,23 @@ def modify_order_principal_engineer(order_id: int, engineer_id: int, background_
     if current_user.level == 2 and current_user.id != engineer_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
+    order_db = modify_order_principal_engineer_by_id(db, order_id, engineer_id)
+    # send_email("judhaha@gmail.com", background_tasks)
+
+    return order_db
+
+
+# 修改工單記號
+@router.patch("/order/mark")
+def modify_order_mark(order_id: int, engineer_id: int, background_tasks: BackgroundTasks,
+                      db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
+    current_user = authorize_user(Authorize, db)
+    if current_user.level == 3:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    if current_user.level == 2 and current_user.id != engineer_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
     return modify_order_principal_engineer_by_id(db, order_id, engineer_id)
 
 

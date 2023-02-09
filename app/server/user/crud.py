@@ -144,11 +144,16 @@ def change_user_level(db: Session, user_id: int, level: int):
 def delete_user_by_user_id(db: Session, user_id: int):
     try:
         user_db = db.query(User).filter(User.id == user_id).first()
-        db.query(OrderMessage).filter(OrderMessage.user_id == user_id).delete()
-        db.query(Order).filter(Order.client_id == user_id).delete()
-        db.query(Order).filter(Order.engineer_id == user_id).delete()
+        if user_db.level == 3:
+            db.query(OrderMessage).filter(OrderMessage.user_id == user_id).delete()
+            db.query(Order).filter(Order.client_id == user_id).delete()
+        elif user_db.level == 2:
+            order_db = db.query(Order).filter(Order.client_id == user_id).first()
+            order_db.engineer_id = 0
+            order_db.updated_at = datetime.now()
         db.delete(user_db)
         db.commit()
+
     except Exception as e:
         db.rollback()
         print(str(e))
