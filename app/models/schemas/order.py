@@ -12,7 +12,6 @@ class OrderBase(BaseModel):
 class OrderCreateModel(OrderBase):
     client_id: int
     order_issue_id: int
-    serial_number: str
     description: str
     detail: list
 
@@ -21,7 +20,6 @@ class OrderCreateModel(OrderBase):
             "example": {
                 "client_id": 1,
                 "order_issue_id": 1,
-                "serial_number": "A-1",
                 "description": "開機很久",
                 "detail": [
                     "問題1",
@@ -34,7 +32,6 @@ class OrderCreateModel(OrderBase):
 
 class OrderCreateResponseModel(OrderBase):
     order_issue_id: int
-    serial_number: str
     description: str
     detail: list
 
@@ -53,8 +50,8 @@ class OrderViewinfoModel(OrderBase):
 
 
 class OrderViewModel(OrderBase):
+    id: int
     company_name: str
-    serial_number: str
     mark: bool
     status: int
     engineer_name: str
@@ -78,6 +75,5 @@ class OrderDeleteIdModel(OrderBase):
 class OrderModifyModel(OrderBase):
     order_id: int
     order_issue_id: int
-    serial_number: str
     description: str
     detail: str

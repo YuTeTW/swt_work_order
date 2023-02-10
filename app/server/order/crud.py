@@ -1,7 +1,7 @@
 import os
 
 from fastapi import HTTPException, Response
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_
 from datetime import datetime
 
@@ -16,13 +16,9 @@ def create_order(db: Session, company_name, order_create: OrderCreateModel):
     if not db.query(User).filter(User.id == order_create.client_id).first():
         raise UnicornException(name=create_order.__name__, description='client user not found', status_code=404)
     try:
-        db_order = Order(order_issue_id=order_create.order_issue_id,
-                         serial_number=order_create.serial_number,
-                         description=order_create.description,
-                         detail=str(order_create.detail),
-                         client_id=order_create.client_id,
-                         company_name=company_name,
-                         )
+        order_create.detail = str(order_create.detail)
+        db_order = Order(**order_create.dict(),
+                         company_name=company_name)
         db.add(db_order)
         db.commit()
         db.refresh(db_order)
@@ -48,6 +44,7 @@ def get_all_order(db: Session):
         engineer_name = engineer_name if engineer_name else "未指派"
         issue_name = issue_name if issue_name else "未選擇問題種類"
         order = OrderViewModel(
+            id = each_order.id,
             company_name=each_order.company_name,
             serial_number=each_order.serial_number,
             description=each_order.description,
@@ -61,6 +58,31 @@ def get_all_order(db: Session):
         )
         order_list.append(order)
     return order_list
+
+    # orders = db.query(Order).all()
+    # order_view_models = []
+    # for each_order in orders:
+    #     engineer = db.query(User).filter_by(id=each_order.engineer_id).first()
+    #     engineer_name = engineer.name if engineer else ""
+    #     print(each_order.engineer_id)
+    #     # print(engineer_name)
+    #     issue = db.query(OrderIssue).filter_by(id=each_order.order_issue_id).first()
+    #     issue_name = issue.name if issue else ""
+    #     order_view_model = OrderViewModel(
+    #         id=each_order.id,
+    #         company_name=each_order.company_name,
+    #         serial_number=each_order.serial_number,
+    #         description=each_order.description,
+    #         detail=eval(each_order.detail),
+    #         engineer_name=engineer_name,
+    #         issue_name=issue_name,
+    #         mark=each_order.mark,
+    #         status=each_order.status,
+    #         created_at=each_order.created_at,
+    #         file_name=eval(each_order.file_name)
+    #     )
+    #     order_view_models.append(order_view_model)
+    # return order_view_models
 
     # plan B 用pandas
     # import pandas as pd
