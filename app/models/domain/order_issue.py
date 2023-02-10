@@ -1,6 +1,8 @@
 from datetime import datetime
 from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy.orm import relationship
+
 from app.db.database import Base
 
 
@@ -12,7 +14,6 @@ class OrderIssue(Base):
     time_hours = Column(Integer, index=True)
     created_at = Column(DateTime, index=True)
     updated_at = Column(DateTime, index=True)
-
 
     def __init__(self, name, severity, time_hours, **kwargs):
         self.name = name

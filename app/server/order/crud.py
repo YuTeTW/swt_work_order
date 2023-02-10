@@ -1,8 +1,7 @@
 import os
 
 from fastapi import HTTPException, Response
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import and_
+from sqlalchemy.orm import Session
 from datetime import datetime
 
 from app.models.domain.Error_handler import UnicornException
@@ -31,97 +30,62 @@ def create_order(db: Session, company_name, order_create: OrderCreateModel):
     return db_order
 
 
-def get_order_by_user_id(db: Session, user_id):
-    order_db = db.query(Order).filter(Order.client_id == user_id).first()
-    return order_db
+def get_order_view_model(each_order, engineer_name, issue_name):
+    engineer_name = engineer_name if engineer_name else "未指派"
+    issue_name = issue_name if issue_name else "未選擇問題種類"
+    return OrderViewModel(
+        id=each_order.id,
+        company_name=each_order.company_name,
+        description=each_order.description,
+        detail=eval(each_order.detail),
+        engineer_name=engineer_name,
+        issue_name=issue_name,
+        mark=each_order.mark,
+        status=each_order.status,
+        created_at=each_order.created_at,
+        file_name=eval(each_order.file_name)
+    )
 
 
 def get_all_order(db: Session):
-    order_list = list()
-    order_db = db.query(Order, User.name, OrderIssue.name).outerjoin(User, Order.engineer_id == User.id).outerjoin(
-        OrderIssue, Order.order_issue_id == OrderIssue.id).all()
-    for each_order, engineer_name, issue_name in order_db:
-        engineer_name = engineer_name if engineer_name else "未指派"
-        issue_name = issue_name if issue_name else "未選擇問題種類"
-        order = OrderViewModel(
-            id = each_order.id,
-            company_name=each_order.company_name,
-            serial_number=each_order.serial_number,
-            description=each_order.description,
-            detail=eval(each_order.detail),
-            engineer_name=engineer_name,
-            issue_name=issue_name,
-            mark=each_order.mark,
-            status=each_order.status,
-            created_at=each_order.created_at,
-            file_name=eval(each_order.file_name)
-        )
-        order_list.append(order)
-    return order_list
+    order_db_ = db.query(Order).all()
+    order_db = db.query(Order, User.name, OrderIssue.name).outerjoin(
+        User, Order.engineer_id == User.id
+    ).outerjoin(
+        OrderIssue, Order.order_issue_id == OrderIssue.id
+    ).all()
+    print(order_db)
+    print(order_db_)
 
-    # orders = db.query(Order).all()
-    # order_view_models = []
-    # for each_order in orders:
-    #     engineer = db.query(User).filter_by(id=each_order.engineer_id).first()
-    #     engineer_name = engineer.name if engineer else ""
-    #     print(each_order.engineer_id)
-    #     # print(engineer_name)
-    #     issue = db.query(OrderIssue).filter_by(id=each_order.order_issue_id).first()
-    #     issue_name = issue.name if issue else ""
-    #     order_view_model = OrderViewModel(
-    #         id=each_order.id,
-    #         company_name=each_order.company_name,
-    #         serial_number=each_order.serial_number,
-    #         description=each_order.description,
-    #         detail=eval(each_order.detail),
-    #         engineer_name=engineer_name,
-    #         issue_name=issue_name,
-    #         mark=each_order.mark,
-    #         status=each_order.status,
-    #         created_at=each_order.created_at,
-    #         file_name=eval(each_order.file_name)
-    #     )
-    #     order_view_models.append(order_view_model)
-    # return order_view_models
-
-    # plan B 用pandas
-    # import pandas as pd
-    #
-    # order_db = db.query(Order, User.name, OrderIssue.name).outerjoin(User, Order.engineer_id == User.id).outerjoin(
-    #     OrderIssue, Order.order_issue_id == OrderIssue.id).all()
-    #
-    # df = pd.DataFrame(order_db, columns=['Order', 'engineer_name', 'issue_name'])
-    # df['engineer_name'] = df['engineer_name'].fillna("未指派")
+    # view_models = [get_order_view_model(each_order, engineer_name, issue_name)
+    #                for each_order, engineer_name, issue_name in order_db]
+    return "order_db"
 
 
+def get_some_order(db: Session, client_id_list=None, engineer_id_list=None, order_issue_id_list=None, status_list=None):
+    # Join the Order table with the User and OrderIssue tables
+    order_db = db.query(Order, User.name, OrderIssue.name).outerjoin(
+        User, Order.engineer_id == User.id).outerjoin(
+        OrderIssue, Order.order_issue_id == OrderIssue.id)
 
-def get_some_order(db: Session, user_id_list=None, engineer_id_list=None, order_issue_id_list=None, status_list=None):
-    order_db = db.query(Order, User.name, OrderIssue.name).filter(
-        Order.engineer_id == User.id, Order.order_issue_id == OrderIssue.id).filter(
-        Order.client_id.in_(user_id_list), Order.engineer_id.in_(engineer_id_list),
-        Order.order_issue_id.in_(order_issue_id_list), Order.status.in_(status_list))
-    order_list = []
-    for each_order, engineer_name, issue_name in order_db:
-        order_list.append(
-            OrderViewModel(
-                company_name=each_order.company_name,
-                serial_number=each_order.serial_number,
-                description=each_order.description,
-                detail=eval(each_order.detail),
-                engineer_name=engineer_name or "未派发",
-                issue_name=issue_name,
-                mark=each_order.mark,
-                status=each_order.status,
-                created_at=each_order.created_at,
-                file_name=eval(each_order.file_name)
-            )
-        )
+    if client_id_list:
+        order_db = order_db.filter(Order.client_id.in_(client_id_list))
+    if engineer_id_list:
+        order_db = order_db.filter(Order.engineer_id.in_(engineer_id_list))
+    if order_issue_id_list:
+        order_db = order_db.filter(Order.order_issue_id.in_(order_issue_id_list))
+    if status_list:
+        order_db = order_db.filter(Order.status.in_(status_list))
 
-    return order_list
+    # Convert each order to a view model
+    view_models = [get_order_view_model(each_order, engineer_name, issue_name)
+                   for each_order, engineer_name, issue_name in order_db]
+
+    return view_models
 
 
 def check_order_status(db: Session, order_id_list):
-    return db.query(Order).filter(and_(Order.id.in_(order_id_list), Order.status != 0)).first()
+    return db.query(Order).filter(Order.id.in_(order_id_list), Order.status != 0).first()
 
 
 def delete_order_by_id(db: Session, order_id_list):
@@ -146,7 +110,6 @@ def modify_order_by_id(db: Session, order_modify: OrderModifyModel):
     if not order_db.first():
         raise UnicornException(name=modify_order_by_id.__name__, description='order not found', status_code=404)
     order_db.order_issue_id = order_modify.order_issue_id
-    order_db.serial_number = order_modify.serial_number
     order_db.description = order_modify.description
     order_db.detail = order_modify.detail
     order_db.updated_at = datetime.now()

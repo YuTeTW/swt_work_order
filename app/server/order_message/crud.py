@@ -4,6 +4,7 @@ from datetime import datetime
 from app.models.domain.order import Order
 from app.models.domain.order_message import OrderMessage
 from app.models.domain.Error_handler import UnicornException
+from app.models.domain.user import User
 
 
 def create_order_message(db: Session, order_message_create):
@@ -24,7 +25,20 @@ def create_order_message(db: Session, order_message_create):
 
 
 def get_order_message_by_order_id(db: Session, order_id: int):
-    return db.query(OrderMessage).filter(OrderMessage.order_id == order_id).all()
+    order_message_db = db.query(OrderMessage, User.name).join(User, OrderMessage.user_id == User.id).filter(
+        OrderMessage.order_id == order_id).all()
+    order_message_list = []
+    from app.models.schemas.order_message import OrderMessageViewModel
+    for order_message, reporter_name in order_message_db:
+        order_message_list.append(
+            OrderMessageViewModel(
+                id=order_message.id,
+                reporter_name=reporter_name,
+                message=order_message.message,
+                created_at=order_message.created_at
+            )
+        )
+    return order_message_list
 
 
 def delete_order_message_by_id(db: Session, issue_id: int):

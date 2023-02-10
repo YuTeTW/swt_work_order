@@ -1,3 +1,5 @@
+from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi_jwt_auth import AuthJWT
 from sqlalchemy.orm import Session
@@ -25,9 +27,9 @@ from app.models.schemas.order import (
     OrderCreateResponseModel,
     OrderFilterBodyModel,
     OrderDeleteIdModel,
-    OrderModifyModel
+    OrderModifyModel, OrderViewModel
 )
-from app.server.send_email import send_email
+# from app.server.send_email import send_email
 from app.server.user.crud import (
     get_user_by_id
 )
@@ -52,25 +54,28 @@ async def create_a_order(order_create: OrderCreateModel, background_tasks: Backg
 
 
 # 取得所有order (pm)
+# @router.get("/order/all", response_model=List[OrderViewModel])
 @router.get("/order/all")
 def get_all_orders(db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
     if current_user.level > 1:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    all_order = get_all_order(db)
-    return all_order
+    return get_all_order(db)
 
 
 # 取得部分order (RD)
-@router.get("/order")
+@router.get("/order", response_model=List[OrderViewModel])
 def get_some_orders(filter_body: OrderFilterBodyModel, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
-    if current_user.level > 1 and filter_body.user_id:
+    if current_user.level > 1 and filter_body.client_id_list:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    if current_user.level > 1 and filter_body.engineer_id:
+    if current_user.level > 1 and filter_body.engineer_id_list:
         raise HTTPException(status_code=401, detail="Unauthorized")
     return get_some_order(
-        db, filter_body.user_id, filter_body.engineer_id, filter_body.order_issue_id, filter_body.status
+        db, filter_body.client_id_list,
+        filter_body.engineer_id_list,
+        filter_body.order_issue_id_list,
+        filter_body.status_list
     )
 
 

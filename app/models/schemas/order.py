@@ -31,16 +31,17 @@ class OrderCreateModel(OrderBase):
 
 
 class OrderCreateResponseModel(OrderBase):
+    id: int
     order_issue_id: int
     description: str
     detail: list
 
 
 class OrderFilterBodyModel(OrderBase):
-    user_id: list = []
-    order_issue_id: list = []
-    engineer_id: list = []
-    status: list = []
+    client_id_list: list = []
+    order_issue_id_list: list = []
+    engineer_id_list: list = []
+    status_list: list = []
 
 
 class OrderViewinfoModel(OrderBase):
@@ -60,6 +61,20 @@ class OrderViewModel(OrderBase):
     description: str
     detail: list
     created_at: datetime
+
+    # def __init__(self, order, engineer_name, issue_name, *args, **kwargs):
+    #     super().__init__(*args, **kwargs)
+    #     self.id = order.id
+    #     self.company_name = order.company_name
+    #     self.serial_number = order.serial_number
+    #     self.description = order.description
+    #     self.detail = eval(order.detail)
+    #     self.engineer_name = engineer_name if engineer_name else "未指派"
+    #     self.issue_name = issue_name if issue_name else "未選擇問題種類"
+    #     self.mark = order.mark
+    #     self.status = order.status
+    #     self.created_at = order.created_at
+    #     self.file_name = eval(order.file_name)
 
 
 class OrderView2Model(OrderBase):

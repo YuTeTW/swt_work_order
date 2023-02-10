@@ -25,8 +25,7 @@ class OrderMessageCreateModel(OrderBase):
 
 class OrderMessageViewModel(OrderBase):
     id: int
-    # reporter_name: str
-    user_id: int
+    reporter_name: str
     message: str
     created_at: datetime
 

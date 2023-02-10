@@ -1,6 +1,8 @@
 from datetime import datetime
 from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey, ARRAY
 from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy.orm import relationship
+
 from app.db.database import Base
 
 
@@ -19,6 +21,7 @@ class Order(Base):
     file_name = Column(String, index=True, default=str([]))  # 因sqlite不能用Array存，所以先轉str，再轉list輸出
     created_at = Column(DateTime, index=True, default=datetime.now())
     updated_at = Column(DateTime, index=True, default=datetime.now())
+
 
     def __init__(self, client_id, company_name,
                  order_issue_id, description, detail, **kwargs):
