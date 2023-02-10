@@ -48,18 +48,15 @@ def get_order_view_model(each_order, engineer_name, issue_name):
 
 
 def get_all_order(db: Session):
-    order_db_ = db.query(Order).all()
     order_db = db.query(Order, User.name, OrderIssue.name).outerjoin(
         User, Order.engineer_id == User.id
     ).outerjoin(
         OrderIssue, Order.order_issue_id == OrderIssue.id
     ).all()
-    print(order_db)
-    print(order_db_)
 
-    # view_models = [get_order_view_model(each_order, engineer_name, issue_name)
-    #                for each_order, engineer_name, issue_name in order_db]
-    return "order_db"
+    view_models = [get_order_view_model(each_order, engineer_name, issue_name)
+                   for each_order, engineer_name, issue_name in order_db]
+    return view_models
 
 
 def get_some_order(db: Session, client_id_list=None, engineer_id_list=None, order_issue_id_list=None, status_list=None):
