@@ -62,7 +62,11 @@ class OrderViewModel(OrderBase):
     detail: list
     created_at: datetime
 
-    # def __init__(self, order, engineer_name, issue_name, *args, **kwargs):
+class OrderViewModel2(OrderBase):
+    Order: OrderViewModel
+    engineer_name: str
+    issue_name: str
+# def __init__(self, order, engineer_name, issue_name, *args, **kwargs):
     #     super().__init__(*args, **kwargs)
     #     self.id = order.id
     #     self.company_name = order.company_name

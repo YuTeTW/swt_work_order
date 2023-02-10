@@ -1,4 +1,5 @@
 import os
+from typing import List
 
 from fastapi import HTTPException, Response
 from sqlalchemy.orm import Session
@@ -8,7 +9,7 @@ from app.models.domain.Error_handler import UnicornException
 from app.models.domain.order import Order
 from app.models.domain.order_issue import OrderIssue
 from app.models.domain.user import User
-from app.models.schemas.order import OrderModifyModel, OrderViewModel, OrderCreateModel
+from app.models.schemas.order import OrderModifyModel, OrderViewModel, OrderCreateModel, OrderViewModel2
 
 
 def create_order(db: Session, company_name, order_create: OrderCreateModel):
@@ -47,16 +48,24 @@ def get_order_view_model(each_order, engineer_name, issue_name):
     )
 
 
-def get_all_order(db: Session):
+def get_all_order(db: Session, level, user_id):
+    # order_db = db.query(Order).all()
     order_db = db.query(Order, User.name, OrderIssue.name).outerjoin(
         User, Order.engineer_id == User.id
     ).outerjoin(
         OrderIssue, Order.order_issue_id == OrderIssue.id
-    ).all()
+    )
 
+    if level == 2:
+        order_db = order_db.filter(Order.engineer_id == user_id)
+    if level == 3:
+        print(123)
+        order_db = order_db.filter(Order.client_id == user_id)
     view_models = [get_order_view_model(each_order, engineer_name, issue_name)
                    for each_order, engineer_name, issue_name in order_db]
     return view_models
+    # return view_models
+
 
 
 def get_some_order(db: Session, client_id_list=None, engineer_id_list=None, order_issue_id_list=None, status_list=None):

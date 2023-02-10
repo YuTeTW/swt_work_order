@@ -54,13 +54,11 @@ async def create_a_order(order_create: OrderCreateModel, background_tasks: Backg
 
 
 # 取得所有order (pm)
-# @router.get("/order/all", response_model=List[OrderViewModel])
-@router.get("/order/all")
+@router.get("/order/all", response_model=List[OrderViewModel])
+# @router.get("/order/all")
 def get_all_orders(db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
-    if current_user.level > 1:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    return get_all_order(db)
+    return get_all_order(db, level=current_user.level, user_id=current_user.id)
 
 
 # 取得部分order (RD)
