@@ -10,6 +10,7 @@ class OrderBase(BaseModel):
 
 
 class OrderCreateModel(OrderBase):
+    client_id: int
     order_issue_id: int
     serial_number: str
     description: str
@@ -18,6 +19,7 @@ class OrderCreateModel(OrderBase):
     class Config:
         schema_extra = {
             "example": {
+                "client_id": 1,
                 "order_issue_id": 1,
                 "serial_number": "A-1",
                 "description": "開機很久",

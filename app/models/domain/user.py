@@ -23,11 +23,12 @@ class User(Base):
         self.password = password
         self.name = name
         self.is_enable = is_enable
+        self.level = level
+        self.status = status
         self.info = info
         self.created_at = datetime.now()
         self.updated_at = datetime.now()
-        self.level = level
-        self.status = status
+
 
     def __repr__(self):
         return 'id={}, email={}, name={},info={},is_enable={}'.format(

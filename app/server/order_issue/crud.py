@@ -32,6 +32,11 @@ def get_all_order_issue(db: Session):
 
 def delete_order_issue_by_id(db: Session, issue_id: int):
     try:
+        from app.models.domain.order import Order
+        order_db = db.query(Order).filter(Order.order_issue_id == issue_id).all()
+        if order_db:
+            for each_order in order_db:
+                each_order.order_issue_id = 0
         db.query(OrderIssue).filter(OrderIssue.id == issue_id).delete(synchronize_session=False)
         db.commit()
     except Exception as e:

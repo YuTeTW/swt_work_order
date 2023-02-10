@@ -1,13 +1,18 @@
 from sqlalchemy.orm import Session
 from datetime import datetime
 
+from app.models.domain.order import Order
 from app.models.domain.order_message import OrderMessage
 from app.models.domain.Error_handler import UnicornException
 
 
-def create_order_message(db: Session, user_id, order_message_create):
+def create_order_message(db: Session, order_message_create):
+    if not db.query(Order).filter(Order.id == order_message_create.order_id).first():
+        raise UnicornException(
+            name=modify_order_message_by_id.__name__, description="order doesn't exist", status_code=404
+        )
     try:
-        db_user = OrderMessage(**order_message_create.dict(), user_id=user_id)
+        db_user = OrderMessage(**order_message_create.dict())
         db.add(db_user)
         db.commit()
         db.refresh(db_user)
@@ -15,7 +20,6 @@ def create_order_message(db: Session, user_id, order_message_create):
         db.rollback()
         print(str(e))
         raise UnicornException(name=create_order_message.__name__, description=str(e), status_code=500)
-    print(db_user)
     return db_user
 
 

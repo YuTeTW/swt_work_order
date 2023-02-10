@@ -9,12 +9,14 @@ class OrderBase(BaseModel):
 
 
 class OrderMessageCreateModel(OrderBase):
+    user_id: int
     order_id: int
     message: str
 
     class Config:
         schema_extra = {
             "example": {
+                "user_id": 1,
                 "order_id": 1,
                 "message": "修改第一次",
             }

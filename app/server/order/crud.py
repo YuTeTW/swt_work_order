@@ -9,21 +9,19 @@ from app.models.domain.Error_handler import UnicornException
 from app.models.domain.order import Order
 from app.models.domain.order_issue import OrderIssue
 from app.models.domain.user import User
-from app.models.schemas.order import OrderModifyModel, OrderViewModel
+from app.models.schemas.order import OrderModifyModel, OrderViewModel, OrderCreateModel
 
 
-def create_order(db: Session, client_id, company_name, order_create):
+def create_order(db: Session, company_name, order_create: OrderCreateModel):
+    if not db.query(User).filter(User.id == order_create.client_id).first():
+        raise UnicornException(name=create_order.__name__, description='client user not found', status_code=404)
     try:
         db_order = Order(order_issue_id=order_create.order_issue_id,
                          serial_number=order_create.serial_number,
                          description=order_create.description,
                          detail=str(order_create.detail),
-                         client_id=client_id,
-                         status=0,
-                         engineer_id=0,
-                         mark=False,
+                         client_id=order_create.client_id,
                          company_name=company_name,
-                         file_name=str([])
                          )
         db.add(db_order)
         db.commit()
@@ -48,6 +46,7 @@ def get_all_order(db: Session):
         OrderIssue, Order.order_issue_id == OrderIssue.id).all()
     for each_order, engineer_name, issue_name in order_db:
         engineer_name = engineer_name if engineer_name else "未指派"
+        issue_name = issue_name if issue_name else "未選擇問題種類"
         order = OrderViewModel(
             company_name=each_order.company_name,
             serial_number=each_order.serial_number,
@@ -105,6 +104,8 @@ def check_order_status(db: Session, order_id_list):
 
 def delete_order_by_id(db: Session, order_id_list):
     try:
+        from app.models.domain.order_message import OrderMessage
+        db.query(OrderMessage).filter(OrderMessage.order_id.in_(order_id_list)).delete(synchronize_session=False)
         db.query(Order).filter(Order.id.in_(order_id_list)).delete(synchronize_session=False)
         db.commit()
     except Exception as e:

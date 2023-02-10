@@ -116,6 +116,7 @@ class UserViewModel(UserBase):
     info: UserInfoModel
     level: int
     status: int
+    is_enable: int
     created_at: datetime
     updated_at: datetime
 
@@ -126,15 +127,3 @@ class LoginResultUserViewModel(UserBase):
     access_token: str
     refresh_token: str
     token_type: str
-
-
-class DeviceLoginResultUserViewModel(UserBase):
-    User: UserViewModel
-    access_token: str
-    refresh_token: str
-    token_type: str
-
-
-class UserInviteViewModel(UserBase):
-    email: EmailStr
-    level: int

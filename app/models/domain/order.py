@@ -16,21 +16,18 @@ class Order(Base):
     mark = Column(Boolean, index=True, default=False)
     description = Column(String, index=True, default=None)
     detail = Column(String, index=True, default=None)  # 因sqlite不能用Array存，所以先轉str，再轉list輸出
-    file_name = Column(String, index=True, default=None)  # 因sqlite不能用Array存，所以先轉str，再轉list輸出
+    file_name = Column(String, index=True, default=str([]))  # 因sqlite不能用Array存，所以先轉str，再轉list輸出
     created_at = Column(DateTime, index=True)
     updated_at = Column(DateTime, index=True)
 
-    def __init__(self, client_id, engineer_id, serial_number, company_name,
-                 status, order_issue_id, description, detail, file_name, **kwargs):
+    def __init__(self, client_id, serial_number, company_name,
+                 order_issue_id, description, detail, **kwargs):
         self.client_id = client_id
-        self.engineer_id = engineer_id
         self.order_issue_id = order_issue_id
         self.serial_number = serial_number
         self.company_name = company_name
-        self.status = status
         self.description = description
         self.detail = detail
-        self.file_name = file_name
         self.created_at = datetime.now()
         self.updated_at = datetime.now()
 

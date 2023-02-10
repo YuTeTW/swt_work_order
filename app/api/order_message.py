@@ -22,26 +22,26 @@ router = APIRouter()
 
 # 新增工單訊息
 @router.post("/order_message", response_model=OrderMessageViewModel)
-def create_a_order_message(order_message_create: OrderMessageCreateModel, user_id: int,
+def create_a_order_message(order_message_create: OrderMessageCreateModel,
                            Authorize: AuthJWT = Depends(), db: Session = Depends(get_db)):
     current_user = authorize_user(Authorize, db)
-    reporter_user_id = current_user.id if current_user.level != 0 else user_id
-    print(reporter_user_id)
     if current_user.level > 2:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    return create_order_message(db, reporter_user_id, order_message_create)
+    if current_user.level != 0 and current_user.id != order_message_create.user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    return create_order_message(db, order_message_create)
 
 
 # 取得工單訊息 (RD)
 @router.get("/order_message", response_model=List[OrderMessageViewModel])
-def get_order(order_id: int, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
+def get_order_message(order_id: int, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     authorize_user(Authorize, db)
     return get_order_message_by_order_id(db, order_id)
 
 
 # 刪除工單訊息
 @router.delete("/order_message")
-def delete_order(issue_id, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
+def delete_order_message(issue_id, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
     if current_user.level > 2:
         raise HTTPException(status_code=401, detail="Unauthorized")

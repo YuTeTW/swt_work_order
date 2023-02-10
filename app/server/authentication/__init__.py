@@ -59,7 +59,7 @@ def authenticate_user(email: str, password: str, db: Session = Depends(get_db)):
     if not verify_password(password, user.password):
         return False
     if not user.is_enable:
-        raise HTTPException(status_code=401, detail="user 尚未啟用")
+        raise HTTPException(status_code=401, detail="user 未啟用")
     return user
 
 

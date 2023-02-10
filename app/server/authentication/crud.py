@@ -8,18 +8,19 @@ from app.server.user.crud import get_password_hash
 
 
 def set_user_enable(db: Session, user_id: int, is_enable: bool):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
+    user_db = db.query(User).filter(User.id == user_id).first()
+    if not user_db:
         raise UnicornException(name=set_user_enable.__name__,
                                description='User not found', status_code=404)
-    user.is_enable = is_enable
-    user.updated_at = datetime.now()
+    user_db.is_enable = is_enable
+    user_db.updated_at = datetime.now()
     try:
         db.commit()
     except Exception as e:
         db.rollback()
         raise UnicornException(name=set_user_enable.__name__,
                                description=str(e), status_code=500)
+    return user_db
 
 
 def create_and_set_user_password(db: Session, user_email: str):

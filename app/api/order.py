@@ -35,17 +35,16 @@ router = APIRouter()
 
 
 # 新增工單
-# @router.post("/order",)
 @router.post("/order", response_model=OrderCreateResponseModel)
-async def create_a_order(order_create: OrderCreateModel, background_tasks: BackgroundTasks, client_id: int = 1,
+async def create_a_order(order_create: OrderCreateModel, background_tasks: BackgroundTasks,
                          Authorize: AuthJWT = Depends(), db: Session = Depends(get_db)):
     current_user = authorize_user(Authorize, db)
-    user_db = get_user_by_id(db, client_id)
-    if current_user.level < 3 and current_user.id == client_id:
+    user_db = get_user_by_id(db, order_create.client_id)
+    if current_user.level < 3 and current_user.id == order_create.client_id:
         raise HTTPException(status_code=422, detail="Only create order for client")
-    if current_user.level == 3 and user_db.id != client_id:
+    if current_user.level == 3 and current_user.id != order_create.client_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    order_db = create_order(db, user_db.id, user_db.name, order_create)
+    order_db = create_order(db, user_db.name, order_create)
 
     # 建單後寄信
     # send_email("judhaha@gmail.com", background_tasks)
@@ -54,7 +53,7 @@ async def create_a_order(order_create: OrderCreateModel, background_tasks: Backg
 
 # 取得所有order (pm)
 @router.get("/order/all")
-def get_order(db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
+def get_all_orders(db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
     if current_user.level > 1:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -165,7 +164,7 @@ async def download_picture(order_id: int,
 
 # 刪除照片
 @router.delete("/order/picture")
-async def download_picture(order_id: int, file_name: str,
+async def delete_picture(order_id: int, file_name: str,
                            db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     authorize_user(Authorize, db)
     return delete_picture_from_folder(db, order_id, file_name)
