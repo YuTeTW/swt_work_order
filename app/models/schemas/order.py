@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel
 from datetime import datetime
 
@@ -104,6 +106,6 @@ class OrderMarkPost(OrderBase):
 
 
 class OrderGetFilterTimeModel(OrderBase):
-    start_time: datetime = None
-    end_time: datetime = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
 
