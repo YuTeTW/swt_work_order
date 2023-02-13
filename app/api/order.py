@@ -83,7 +83,7 @@ def get_some_orders(filter_body: OrderFilterBodyModel, db: Session = Depends(get
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     return get_some_order(
-        db, filter_body.client_id_list,
+        db, current_user, filter_body.client_id_list,
         filter_body.engineer_id_list,
         filter_body.order_issue_id_list,
         filter_body.status_list
