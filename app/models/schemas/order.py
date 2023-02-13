@@ -104,6 +104,6 @@ class OrderMarkPost(OrderBase):
 
 
 class OrderGetFilterTimeModel(OrderBase):
-    start_time: datetime
-    end_time: datetime
+    start_time: datetime = None
+    end_time: datetime = None
 
