@@ -1,7 +1,7 @@
 import os
-from typing import List
 
 from fastapi import HTTPException, Response
+from sqlalchemy import and_
 from sqlalchemy.orm import Session
 from datetime import datetime
 
@@ -9,7 +9,9 @@ from app.models.domain.Error_handler import UnicornException
 from app.models.domain.order import Order
 from app.models.domain.order_issue import OrderIssue
 from app.models.domain.user import User
-from app.models.schemas.order import OrderModifyModel, OrderViewModel, OrderCreateModel, OrderViewModel2
+from app.models.domain.user_mark_order import UserMarkOrder
+from app.models.schemas.order import OrderModifyModel, OrderViewModel, OrderCreateModel, OrderMarkPost, \
+    OrderGetFilterTimeModel
 
 
 def create_order(db: Session, company_name, order_create: OrderCreateModel):
@@ -48,31 +50,56 @@ def get_order_view_model(each_order, engineer_name, issue_name):
     )
 
 
-def get_all_order(db: Session, level, user_id):
+def get_all_order(db: Session, level, user_id, filter_time: OrderGetFilterTimeModel):
     # order_db = db.query(Order).all()
     order_db = db.query(Order, User.name, OrderIssue.name).outerjoin(
         User, Order.engineer_id == User.id
     ).outerjoin(
         OrderIssue, Order.order_issue_id == OrderIssue.id
     )
-
     if level == 2:
         order_db = order_db.filter(Order.engineer_id == user_id)
     if level == 3:
-        print(123)
         order_db = order_db.filter(Order.client_id == user_id)
+    if filter_time.start_time:
+        order_db = order_db.filter(Order.created_at > filter_time.start_time)
+    if filter_time.end_time:
+        order_db = order_db.filter(Order.created_at < filter_time.end_time)
+
     view_models = [get_order_view_model(each_order, engineer_name, issue_name)
                    for each_order, engineer_name, issue_name in order_db]
     return view_models
-    # return view_models
 
 
+def test_get_all_order(db: Session, level, user_id):
+    order_db = db.query(Order, User.name, OrderIssue.name, UserMarkOrder.mark).outerjoin(
+        User, Order.engineer_id == User.id
+    ).outerjoin(
+        OrderIssue, Order.order_issue_id == OrderIssue.id
+    ).outerjoin(
+        UserMarkOrder, and_(
+            # UserMarkOrder.order_id == Order.id,
+            UserMarkOrder.user_id == User.id
+        )
+    )
+    view_models = [get_order_view_model(each_order, engineer_name, issue_name, mark)
+                   for each_order, engineer_name, issue_name, mark in order_db]
+    # print(view_models)
+    return view_models
 
-def get_some_order(db: Session, client_id_list=None, engineer_id_list=None, order_issue_id_list=None, status_list=None):
+
+def get_some_order(db: Session, client_id_list, engineer_id_list, order_issue_id_list, status_list):
     # Join the Order table with the User and OrderIssue tables
     order_db = db.query(Order, User.name, OrderIssue.name).outerjoin(
-        User, Order.engineer_id == User.id).outerjoin(
-        OrderIssue, Order.order_issue_id == OrderIssue.id)
+        User, Order.engineer_id == User.id
+    ).outerjoin(
+        OrderIssue, Order.order_issue_id == OrderIssue.id
+    ).outerjoin(
+        UserMarkOrder, and_(
+            UserMarkOrder.order_id == Order.id,
+            UserMarkOrder.user_id == User.id
+        )
+    )
 
     if client_id_list:
         order_db = order_db.filter(Order.client_id.in_(client_id_list))
@@ -139,7 +166,9 @@ def modify_order_status_by_id(db: Session, order_id: int, status: int):
     order_db = db.query(Order).filter(Order.id == order_id).first()
     if not order_db:
         raise UnicornException(
-            name=modify_order_principal_engineer_by_id.__name__, description='order not found', status_code=404)
+            name=modify_order_principal_engineer_by_id.__name__,
+            description='order not found',
+            status_code=404)
     order_db.status = status
     order_db.updated = datetime.now()
     db.commit()
@@ -150,7 +179,9 @@ def modify_order_principal_engineer_by_id(db: Session, order_id: int, engineer_i
     order_db = db.query(Order).filter(Order.id == order_id).first()
     if not order_db:
         raise UnicornException(
-            name=modify_order_principal_engineer_by_id.__name__, description='order not found', status_code=404)
+            name=modify_order_principal_engineer_by_id.__name__,
+            description='order not found',
+            status_code=404)
 
     status = 1 if order_db.status == 0 else order_db.status
     order_db.engineer_id = engineer_id
@@ -158,6 +189,50 @@ def modify_order_principal_engineer_by_id(db: Session, order_id: int, engineer_i
     order_db.updated = datetime.now()
     db.commit()
     return order_db
+
+
+def order_mark_by_user(db: Session, user_id, order_mark: OrderMarkPost):
+    # Check if the user exists
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise UnicornException(
+            name=order_mark_by_user.__name__,
+            description='User does not exist',
+            status_code=404)
+
+    # Check if the order exists
+    order = db.query(Order).filter(Order.id == order_mark.order_id).first()
+    if not order:
+        raise UnicornException(
+            name=order_mark_by_user.__name__,
+            description='Order does not exist',
+            status_code=404)
+
+    # Check if the user has marked the order
+    mark_db = db.query(UserMarkOrder).filter(
+            UserMarkOrder.user_id == user_id,
+            UserMarkOrder.order_id == order_mark.order_id
+        ).first()
+
+    try:
+        # If the mark is empty, delete the mark from the database
+        if not order_mark.mark:
+            if mark_db:
+                db.delete(mark_db)
+                db.commit()
+
+        # If the mark is not empty, and the mark does not exist in the database, add it to the database
+        else:
+            if not mark_db:
+                mark = UserMarkOrder(**order_mark.dict(), user_id=user_id)
+                db.add(mark)
+                db.commit()
+                db.refresh(mark)
+    except Exception as e:
+        print(str(e))
+        raise UnicornException(name=delete_order_by_id.__name__, description=str(e), status_code=500)
+
+    return "Done"
 
 
 async def upload_picture_to_folder(db: Session, order_id, picture_file):

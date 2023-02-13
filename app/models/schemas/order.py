@@ -1,5 +1,4 @@
-from typing import Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from datetime import datetime
 
 
@@ -62,6 +61,7 @@ class OrderViewModel(OrderBase):
     detail: list
     created_at: datetime
 
+
 class OrderViewModel2(OrderBase):
     Order: OrderViewModel
     engineer_name: str
@@ -96,3 +96,14 @@ class OrderModifyModel(OrderBase):
     order_issue_id: int
     description: str
     detail: str
+
+
+class OrderMarkPost(OrderBase):
+    order_id: int
+    mark: bool
+
+
+class OrderGetFilterTimeModel(OrderBase):
+    start_time: datetime
+    end_time: datetime
+
