@@ -5,6 +5,7 @@ from typing import List
 
 from app.db.database import get_db
 from app.helper.authentication import authorize_user
+from app.server.authentication import AuthorityLevel
 from app.server.order_message.crud import (
     create_order_message,
     get_order_message_by_order_id,
@@ -25,17 +26,21 @@ router = APIRouter()
 def create_a_order_message(order_message_create: OrderMessageCreateModel,
                            Authorize: AuthJWT = Depends(), db: Session = Depends(get_db)):
     current_user = authorize_user(Authorize, db)
-    if current_user.level > 2:
+
+    if current_user.level > AuthorityLevel.engineer.value:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    if current_user.level != 0 and current_user.id != order_message_create.user_id:
+
+    if current_user.level != AuthorityLevel.root.value and current_user.id != order_message_create.user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
+
     return create_order_message(db, order_message_create)
 
 
-# 取得工單訊息 (RD)
+# 取得工單訊息
 @router.get("/order_message", response_model=List[OrderMessageViewModel])
 def get_order_message(order_id: int, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     authorize_user(Authorize, db)
+
     return get_order_message_by_order_id(db, order_id)
 
 
@@ -43,8 +48,10 @@ def get_order_message(order_id: int, db: Session = Depends(get_db), Authorize: A
 @router.delete("/order_message")
 def delete_order_message(issue_id, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
-    if current_user.level > 2:
+
+    if current_user.level > AuthorityLevel.engineer.value:
         raise HTTPException(status_code=401, detail="Unauthorized")
+
     delete_order_message_by_id(db, issue_id)
 
 
@@ -53,6 +60,6 @@ def delete_order_message(issue_id, db: Session = Depends(get_db), Authorize: Aut
 def modify_order_message(order_message_modify: OrderMessageModifyModel,
                          db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
-    if current_user.level > 2:
+    if current_user.level > AuthorityLevel.engineer.value:
         raise HTTPException(status_code=401, detail="Unauthorized")
     return modify_order_message_by_id(db, order_message_modify)

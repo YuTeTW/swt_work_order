@@ -7,7 +7,7 @@ from app.models.domain.Error_handler import UnicornException
 from app.models.domain.order import Order
 from app.models.domain.order_message import OrderMessage
 from app.models.domain.user import User
-from app.models.schemas.user import UserPatchPasswordViewModel, UserCreateModel, UserPatchInfoModel
+from app.models.schemas.user import UserPatchPasswordModel, UserCreateModel, UserPatchInfoModel
 from app.server.authentication import AuthorityLevel
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -54,7 +54,7 @@ def modify_user(db: Session, user_patch: UserPatchInfoModel):
     return user_db
 
 
-def modify_user_password(db: Session, user_id: int, userPatch: UserPatchPasswordViewModel):
+def modify_user_password(db: Session, user_id: int, userPatch: UserPatchPasswordModel):
     user_db = db.query(User).filter(User.id == user_id).first()
     if user_db is None:
         raise HTTPException(status_code=404, detail="user not exist")

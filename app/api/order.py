@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
@@ -63,7 +64,7 @@ async def create_a_order(order_create: OrderCreateModel, background_tasks: Backg
 
 # 取得所有工單
 @router.get("/order/all", response_model=List[OrderViewModel])
-def get_all_orders(start_time, end_time,
+def get_all_orders(start_time: Optional[datetime] = None, end_time: Optional[datetime] = None,
                    db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 

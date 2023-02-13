@@ -22,7 +22,7 @@ from app.models.schemas.user import (
     UserViewModel,
     UserCreateModel,
     UserPatchInfoModel,
-    UserPatchPasswordViewModel,
+    UserPatchPasswordModel,
 )
 
 router = APIRouter()
@@ -33,7 +33,7 @@ router = APIRouter()
 def create_a_user(user_create: UserCreateModel,
                   Authorize: AuthJWT = Depends(), db: Session = Depends(get_db)):
     current_user = authorize_user(Authorize, db)
-    if user_create.level > 3 or user_create.level < 1:
+    if user_create.level > AuthorityLevel.client.value or user_create.level < AuthorityLevel.root.value:
         raise HTTPException(status_code=405, detail="Method Not Allowed")
 
     if current_user.level >= user_create.level or current_user.level >= 2:
@@ -52,7 +52,7 @@ def get_a_user_by_id(user_id: int, db: Session = Depends(get_db), Authorize: Aut
     current_user = authorize_user(Authorize, db)
 
     if not check_level(current_user, AuthorityLevel.pm.value):
-        raise HTTPException(status_code=401, detail="權限不夠")
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
     return get_user_by_id(db, user_id)
 
@@ -63,43 +63,42 @@ def get_all_user(db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 
     if not check_level(current_user, AuthorityLevel.pm.value):
-        raise HTTPException(status_code=401, detail="權限不夠")
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
     return get_all_users(db)
 
 
-# user id 修改 User Info(HRAccess)
-# @router.patch("/user/info")
+# user id 修改 User Info
 @router.patch("/user/info", response_model=UserViewModel)
 def patch_user_info(user_patch: UserPatchInfoModel,
                     db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
-    if current_user.level >= user_patch.level or current_user.level > 1:
-        raise HTTPException(status_code=401, detail="權限不夠")
+    if current_user.level >= user_patch.level or current_user.level > AuthorityLevel.pm.value:
+        raise HTTPException(status_code=401, detail="Unauthorized")
     return modify_user(db, user_patch)
 
 
-# user id 修改 密碼 (HRAccess)
+# user id 修改密碼
 @router.patch("/user/password", response_model=UserViewModel)
-def patch_user_password(userPatch: UserPatchPasswordViewModel, db: Session = Depends(get_db),
+def patch_user_password(userPatch: UserPatchPasswordModel, db: Session = Depends(get_db),
                         Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 
     if not verify_password(userPatch.old_password, current_user.password):
-        raise HTTPException(status_code=401, detail="舊密碼錯誤")
+        raise HTTPException(status_code=401, detail="Old password is incorrect")
 
     return modify_user_password(db, current_user.id, userPatch)
 
 
 # user id 修改 User is_enable (HRAccess)
 @router.patch("/user/is_enable", response_model=UserViewModel)
-def patch_user_verify_code_enable(user_id: int, is_enable: bool, db: Session = Depends(get_db),
+def patch_user_is_enable(user_id: int, is_enable: bool, db: Session = Depends(get_db),
                                   Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
-    if current_user.level > 1:
-        raise HTTPException(status_code=401, detail="權限不夠")
-    if user_id < 2:
-        raise HTTPException(status_code=401, detail="權限不夠")
+    if current_user.level > AuthorityLevel.pm.value:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    if user_id < AuthorityLevel.engineer.value:
+        raise HTTPException(status_code=401, detail="Unauthorized")
     return set_user_enable(db, user_id, is_enable)
 
 

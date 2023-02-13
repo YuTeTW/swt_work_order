@@ -67,23 +67,7 @@ class UserPatchInfoModel(UserBase):
         }
 
 
-class UserChangeSettingModel(UserBase):
-    email_alert: Optional[bool] = -1
-    device_email_alert: Optional[bool] = -1
-    language: Optional[int] = -1
-
-    class Config:
-        schema_extra = {
-            "example": {
-                "email_alert": False,
-                "device_email_alert": False,
-                "language": 0,
-            }
-        }
-
-
-
-class UserPatchPasswordViewModel(UserBase):
+class UserPatchPasswordModel(UserBase):
     new_password: str
     old_password: str
 

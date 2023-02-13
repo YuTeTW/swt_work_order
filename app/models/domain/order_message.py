@@ -1,24 +1,22 @@
 from datetime import datetime
-from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey
-from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+
 from app.db.database import Base
 
 
 class OrderMessage(Base):
     __tablename__ = "order_messages"
     id = Column(Integer, primary_key=True, index=True)
-    order_id = Column(Integer, ForeignKey("orders.id"))
-    user_id = Column(Integer, ForeignKey("users.id"))
+    order_id = Column(Integer, ForeignKey("orders.id"), index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
     message = Column(String)
-    created_at = Column(DateTime)
-    updated_at = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.now())
+    updated_at = Column(DateTime, default=datetime.now())
 
     def __init__(self, order_id, user_id, message, **kwargs):
         self.order_id = order_id
         self.user_id = user_id
         self.message = message
-        self.created_at = datetime.now()
-        self.updated_at = datetime.now()
 
 
     def __repr__(self):
