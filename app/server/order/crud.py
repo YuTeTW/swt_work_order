@@ -10,8 +10,7 @@ from app.models.domain.order import Order
 from app.models.domain.order_issue import OrderIssue
 from app.models.domain.user import User
 from app.models.domain.user_mark_order import UserMarkOrder
-from app.models.schemas.order import OrderModifyModel, OrderViewModel, OrderCreateModel, OrderMarkPost, \
-    OrderGetFilterTimeModel
+from app.models.schemas.order import OrderModifyModel, OrderViewModel, OrderCreateModel, OrderMarkPost
 
 
 def create_order(db: Session, company_name, order_create: OrderCreateModel):
@@ -33,9 +32,10 @@ def create_order(db: Session, company_name, order_create: OrderCreateModel):
     return db_order
 
 
-def get_order_view_model(each_order, engineer_name, issue_name):
+def get_order_view_model(each_order, engineer_name, issue_name, mark):
     engineer_name = engineer_name if engineer_name else "未指派"
     issue_name = issue_name if issue_name else "未選擇問題種類"
+    mark = mark if mark else False
     return OrderViewModel(
         id=each_order.id,
         company_name=each_order.company_name,
@@ -43,7 +43,7 @@ def get_order_view_model(each_order, engineer_name, issue_name):
         detail=eval(each_order.detail),
         engineer_name=engineer_name,
         issue_name=issue_name,
-        mark=each_order.mark,
+        mark=mark,
         status=each_order.status,
         created_at=each_order.created_at,
         file_name=eval(each_order.file_name)
@@ -51,12 +51,17 @@ def get_order_view_model(each_order, engineer_name, issue_name):
 
 
 def get_all_order(db: Session, level, user_id, start_time, end_time):
-    # order_db = db.query(Order).all()
-    order_db = db.query(Order, User.name, OrderIssue.name).outerjoin(
+    order_db = db.query(Order, User.name, OrderIssue.name, UserMarkOrder.mark).outerjoin(
         User, Order.engineer_id == User.id
     ).outerjoin(
         OrderIssue, Order.order_issue_id == OrderIssue.id
+    ).outerjoin(
+        UserMarkOrder, and_(
+            UserMarkOrder.order_id == Order.id,
+            UserMarkOrder.user_id == user_id
+        )
     )
+
     if level == 2:
         order_db = order_db.filter(Order.engineer_id == user_id)
     if level == 3:
@@ -66,8 +71,8 @@ def get_all_order(db: Session, level, user_id, start_time, end_time):
     if end_time:
         order_db = order_db.filter(Order.created_at < end_time)
 
-    view_models = [get_order_view_model(each_order, engineer_name, issue_name)
-                   for each_order, engineer_name, issue_name in order_db]
+    view_models = [get_order_view_model(each_order, engineer_name, issue_name, mark)
+                   for each_order, engineer_name, issue_name, mark in order_db]
     return view_models
 
 
@@ -109,8 +114,14 @@ def check_order_status(db: Session, order_id_list):
 
 def delete_order_by_id(db: Session, order_id_list):
     try:
+        # delete all message in order
         from app.models.domain.order_message import OrderMessage
         db.query(OrderMessage).filter(OrderMessage.order_id.in_(order_id_list)).delete(synchronize_session=False)
+
+        # delete all mark in order
+        from app.models.domain.user_mark_order import UserMarkOrder
+        db.query(UserMarkOrder).filter(UserMarkOrder.order_id.in_(order_id_list)).delete(synchronize_session=False)
+
         db.query(Order).filter(Order.id.in_(order_id_list)).delete(synchronize_session=False)
         db.commit()
     except Exception as e:
@@ -273,50 +284,3 @@ def delete_picture_from_folder(db: Session, order_id, file_name):
         except Exception as e:
             raise HTTPException(status_code=500, detail="Failed to Delete image")
     return "Image deleted successfully"
-
-
-
-def test_get_order_view_model(each_order, engineer_name, issue_name, mark):
-    engineer_name = engineer_name if engineer_name else "未指派"
-    issue_name = issue_name if issue_name else "未選擇問題種類"
-    mark = mark if mark else False
-    return OrderViewModel(
-        id=each_order.id,
-        company_name=each_order.company_name,
-        description=each_order.description,
-        detail=eval(each_order.detail),
-        engineer_name=engineer_name,
-        issue_name=issue_name,
-        mark=mark,
-        status=each_order.status,
-        created_at=each_order.created_at,
-        file_name=eval(each_order.file_name)
-    )
-
-
-def test_get_all_order(db: Session, level, user_id):
-    order_db = db.query(UserMarkOrder).filter(UserMarkOrder.user_id == 10).all()
-    print(len(order_db))
-
-    order_db = db.query(Order, User.name, OrderIssue.name, UserMarkOrder.mark).outerjoin(
-        User, Order.engineer_id == User.id
-    ).outerjoin(
-        OrderIssue, Order.order_issue_id == OrderIssue.id
-    ).outerjoin(
-        UserMarkOrder, and_(
-            # UserMarkOrder.order_id == Order.id,
-            UserMarkOrder.user_id == user_id
-        )
-    )
-
-    if level == 2:
-        order_db = order_db.filter(Order.engineer_id == user_id)
-    if level == 3:
-        order_db = order_db.filter(Order.client_id == user_id)
-
-
-    view_models = [test_get_order_view_model(each_order, engineer_name, issue_name, mark)
-                   for each_order, engineer_name, issue_name, mark in order_db]
-    print(order_db.all()[0])
-    # print(view_models)
-    return view_models

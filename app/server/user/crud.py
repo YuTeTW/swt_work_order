@@ -143,6 +143,11 @@ def change_user_level(db: Session, user_id: int, level: int):
 
 def delete_user_by_user_id(db: Session, user_id: int):
     try:
+
+        # delete all mark in user
+        from app.models.domain.user_mark_order import UserMarkOrder
+        db.query(UserMarkOrder).filter(UserMarkOrder.user_id == user_id).delete(synchronize_session=False)
+
         user_db = db.query(User).filter(User.id == user_id).first()
         if user_db.level == 3:
             db.query(OrderMessage).filter(OrderMessage.user_id == user_id).delete()
