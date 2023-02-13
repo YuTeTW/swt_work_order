@@ -50,7 +50,7 @@ def get_order_view_model(each_order, engineer_name, issue_name):
     )
 
 
-def get_all_order(db: Session, level, user_id, filter_time: OrderGetFilterTimeModel):
+def get_all_order(db: Session, level, user_id, start_time, end_time):
     # order_db = db.query(Order).all()
     order_db = db.query(Order, User.name, OrderIssue.name).outerjoin(
         User, Order.engineer_id == User.id
@@ -61,31 +61,17 @@ def get_all_order(db: Session, level, user_id, filter_time: OrderGetFilterTimeMo
         order_db = order_db.filter(Order.engineer_id == user_id)
     if level == 3:
         order_db = order_db.filter(Order.client_id == user_id)
-    if filter_time.start_time:
-        order_db = order_db.filter(Order.created_at > filter_time.start_time)
-    if filter_time.end_time:
-        order_db = order_db.filter(Order.created_at < filter_time.end_time)
+    if start_time:
+        order_db = order_db.filter(Order.created_at > start_time)
+    if end_time:
+        order_db = order_db.filter(Order.created_at < end_time)
 
     view_models = [get_order_view_model(each_order, engineer_name, issue_name)
                    for each_order, engineer_name, issue_name in order_db]
     return view_models
 
 
-def test_get_all_order(db: Session, level, user_id):
-    order_db = db.query(Order, User.name, OrderIssue.name, UserMarkOrder.mark).outerjoin(
-        User, Order.engineer_id == User.id
-    ).outerjoin(
-        OrderIssue, Order.order_issue_id == OrderIssue.id
-    ).outerjoin(
-        UserMarkOrder, and_(
-            # UserMarkOrder.order_id == Order.id,
-            UserMarkOrder.user_id == User.id
-        )
-    )
-    view_models = [get_order_view_model(each_order, engineer_name, issue_name, mark)
-                   for each_order, engineer_name, issue_name, mark in order_db]
-    # print(view_models)
-    return view_models
+
 
 
 def get_some_order(db: Session, client_id_list, engineer_id_list, order_issue_id_list, status_list):
@@ -192,6 +178,7 @@ def modify_order_principal_engineer_by_id(db: Session, order_id: int, engineer_i
 
 
 def order_mark_by_user(db: Session, user_id, order_mark: OrderMarkPost):
+
     # Check if the user exists
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -286,3 +273,50 @@ def delete_picture_from_folder(db: Session, order_id, file_name):
         except Exception as e:
             raise HTTPException(status_code=500, detail="Failed to Delete image")
     return "Image deleted successfully"
+
+
+
+def test_get_order_view_model(each_order, engineer_name, issue_name, mark):
+    engineer_name = engineer_name if engineer_name else "未指派"
+    issue_name = issue_name if issue_name else "未選擇問題種類"
+    mark = mark if mark else False
+    return OrderViewModel(
+        id=each_order.id,
+        company_name=each_order.company_name,
+        description=each_order.description,
+        detail=eval(each_order.detail),
+        engineer_name=engineer_name,
+        issue_name=issue_name,
+        mark=mark,
+        status=each_order.status,
+        created_at=each_order.created_at,
+        file_name=eval(each_order.file_name)
+    )
+
+
+def test_get_all_order(db: Session, level, user_id):
+    order_db = db.query(UserMarkOrder).filter(UserMarkOrder.user_id == 10).all()
+    print(len(order_db))
+
+    order_db = db.query(Order, User.name, OrderIssue.name, UserMarkOrder.mark).outerjoin(
+        User, Order.engineer_id == User.id
+    ).outerjoin(
+        OrderIssue, Order.order_issue_id == OrderIssue.id
+    ).outerjoin(
+        UserMarkOrder, and_(
+            # UserMarkOrder.order_id == Order.id,
+            UserMarkOrder.user_id == user_id
+        )
+    )
+
+    if level == 2:
+        order_db = order_db.filter(Order.engineer_id == user_id)
+    if level == 3:
+        order_db = order_db.filter(Order.client_id == user_id)
+
+
+    view_models = [test_get_order_view_model(each_order, engineer_name, issue_name, mark)
+                   for each_order, engineer_name, issue_name, mark in order_db]
+    print(order_db.all()[0])
+    # print(view_models)
+    return view_models

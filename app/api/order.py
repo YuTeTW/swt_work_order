@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi_jwt_auth import AuthJWT
@@ -63,10 +63,12 @@ async def create_a_order(order_create: OrderCreateModel, background_tasks: Backg
 
 # 取得所有工單
 @router.get("/order/all", response_model=List[OrderViewModel])
-def get_all_orders(filter_time: OrderGetFilterTimeModel, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
+def get_all_orders(start_time, end_time,
+                   db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 
-    return get_all_order(db, level=current_user.level, user_id=current_user.id, filter_time=filter_time)
+    return get_all_order(db, level=current_user.level, user_id=current_user.id,
+                         start_time=start_time, end_time=end_time)
 
 
 # 取得部分工單
