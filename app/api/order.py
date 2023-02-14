@@ -199,12 +199,14 @@ async def delete_picture(order_id: int, file_name: str,
 
 
 ##################################################
+# @router.get("/test")
 @router.get("/test", response_model=List[OrderViewModel])
+
 def get_all_orders(filter_body: OrderFilterBodyModel, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 
     return test_get_some_order(
-        db, current_user, filter_body.client_id_list,
+        db, current_user.id, filter_body.client_id_list,
         filter_body.engineer_id_list,
         filter_body.order_issue_id_list,
         filter_body.status_list

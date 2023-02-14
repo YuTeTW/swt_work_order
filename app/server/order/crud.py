@@ -76,9 +76,6 @@ def get_all_order(db: Session, level, user_id, start_time, end_time):
     return view_models
 
 
-
-
-
 def get_some_order(db: Session, user_id, client_id_list, engineer_id_list, order_issue_id_list, status_list):
     # Join the Order table with the User and OrderIssue tables
     order_db = db.query(Order, User.name, OrderIssue.name, UserMarkOrder.mark).outerjoin(
@@ -284,3 +281,33 @@ def delete_picture_from_folder(db: Session, order_id, file_name):
         except Exception as e:
             raise HTTPException(status_code=500, detail="Failed to Delete image")
     return "Image deleted successfully"
+
+
+def test_get_some_order(db: Session, user_id, client_id_list, engineer_id_list, order_issue_id_list, status_list):
+    # Join the Order table with the User and OrderIssue tables
+    order_db = db.query(Order, User.name, OrderIssue.name, UserMarkOrder.mark).outerjoin(
+        User, Order.engineer_id == User.id
+    ).outerjoin(
+        OrderIssue, Order.order_issue_id == OrderIssue.id
+    ).outerjoin(
+        UserMarkOrder, and_(
+            UserMarkOrder.order_id == Order.id,
+            UserMarkOrder.user_id == user_id
+        )
+    )
+
+
+    if client_id_list:
+        order_db = order_db.filter(Order.client_id.in_(client_id_list))
+    if engineer_id_list:
+        order_db = order_db.filter(Order.engineer_id.in_(engineer_id_list))
+    if order_issue_id_list:
+        order_db = order_db.filter(Order.order_issue_id.in_(order_issue_id_list))
+    if status_list:
+        order_db = order_db.filter(Order.status.in_(status_list))
+
+    # Convert each order to a view model
+    view_models = [get_order_view_model(each_order, engineer_name, issue_name, mark)
+                   for each_order, engineer_name, issue_name, mark in order_db]
+
+    return view_models
