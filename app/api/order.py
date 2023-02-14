@@ -22,7 +22,8 @@ from app.server.order.crud import (
     check_modify_status_permission,
     upload_picture_to_folder,
     download_picture_from_folder,
-    delete_picture_from_folder
+    delete_picture_from_folder,
+    test_get_some_order
 )
 
 from app.models.schemas.order import (
@@ -63,9 +64,19 @@ async def create_a_order(order_create: OrderCreateModel, background_tasks: Backg
 
 # 取得所有工單
 @router.get("/order/all", response_model=List[OrderViewModel])
-def get_all_orders(start_time: Optional[datetime] = None, end_time: Optional[datetime] = None,
+def get_all_orders(start_time: Optional[str] = None, end_time: Optional[str] = None,
                    db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
+    try:
+        if start_time is not None:
+            start_time = datetime.strptime(start_time, "%Y-%m-%d")
+        if end_time is not None:
+            end_time = datetime.strptime(end_time, "%Y-%m-%d")
+        if start_time is not None and end_time is not None and start_time > end_time:
+            start_time, end_time = end_time, start_time
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=401, detail="""start_time or end_time type fail (example: 2023-01-25) """)
 
     return get_all_order(db, level=current_user.level, user_id=current_user.id,
                          start_time=start_time, end_time=end_time)
@@ -189,7 +200,12 @@ async def delete_picture(order_id: int, file_name: str,
 
 ##################################################
 @router.get("/test", response_model=List[OrderViewModel])
-def get_all_orders(db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
+def get_all_orders(filter_body: OrderFilterBodyModel, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 
-    return test_get_all_order(db, level=current_user.level, user_id=current_user.id)
+    return test_get_some_order(
+        db, current_user, filter_body.client_id_list,
+        filter_body.engineer_id_list,
+        filter_body.order_issue_id_list,
+        filter_body.status_list
+    )
