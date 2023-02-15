@@ -109,6 +109,7 @@ def get_some_orders(filter_body: OrderFilterBodyModel, start_time: Optional[str]
             end_time = datetime.strptime(end_time, "%Y-%m-%d")
         if start_time is not None and end_time is not None and start_time > end_time:
             start_time, end_time = end_time, start_time
+            end_time = end_time + timedelta(days=1)
     except Exception as e:
         print(e)
         raise HTTPException(status_code=422, detail="""start_time or end_time type fail (example: 2023-01-25) """)
