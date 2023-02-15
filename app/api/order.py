@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
@@ -23,7 +23,7 @@ from app.server.order.crud import (
     upload_picture_to_folder,
     download_picture_from_folder,
     delete_picture_from_folder,
-    test_get_some_order
+    test_get_all_order
 )
 
 from app.models.schemas.order import (
@@ -49,11 +49,13 @@ async def create_a_order(order_create: OrderCreateModel, background_tasks: Backg
     current_user = authorize_user(Authorize, db)
     user_db = get_user_by_id(db, order_create.client_id)
 
+    # check order create for client
     if current_user.level < AuthorityLevel.client.value and current_user.id == order_create.client_id:
         raise HTTPException(status_code=422, detail="Only create order for client")
 
+    # check client can't create order for other client
     if current_user.level == AuthorityLevel.client.value and current_user.id != order_create.client_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise HTTPException(status_code=401, detail="Client only create order for self")
 
     order_db = create_order(db, user_db.name, order_create)
 
@@ -67,6 +69,39 @@ async def create_a_order(order_create: OrderCreateModel, background_tasks: Backg
 def get_all_orders(start_time: Optional[str] = None, end_time: Optional[str] = None,
                    db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
+
+    # check the type of time filter and the time priority
+    try:
+        if start_time is not None:
+            start_time = datetime.strptime(start_time, "%Y-%m-%d")
+        if end_time is not None:
+            end_time = datetime.strptime(end_time, "%Y-%m-%d")
+        if start_time is not None and end_time is not None and start_time > end_time:
+            start_time, end_time = end_time, start_time
+            end_time = end_time + timedelta(days=1)
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=422, detail="""start_time or end_time type fail (example: 2023-01-25) """)
+
+    return get_all_order(db, level=current_user.level, user_id=current_user.id,
+                         start_time=start_time, end_time=end_time)
+
+
+# 取得部分工單
+@router.get("/order", response_model=List[OrderViewModel])
+def get_some_orders(filter_body: OrderFilterBodyModel, start_time: Optional[str] = None, end_time: Optional[str] = None,
+                    db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
+    current_user = authorize_user(Authorize, db)
+
+    # check filter client authorize when get order
+    if current_user.level > AuthorityLevel.pm.value and filter_body.client_id_list:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    # check filter engineer authorize when get order
+    if current_user.level > AuthorityLevel.pm.value and filter_body.engineer_id_list:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    # check the type of time filter and the time priority
     try:
         if start_time is not None:
             start_time = datetime.strptime(start_time, "%Y-%m-%d")
@@ -76,28 +111,16 @@ def get_all_orders(start_time: Optional[str] = None, end_time: Optional[str] = N
             start_time, end_time = end_time, start_time
     except Exception as e:
         print(e)
-        raise HTTPException(status_code=401, detail="""start_time or end_time type fail (example: 2023-01-25) """)
-
-    return get_all_order(db, level=current_user.level, user_id=current_user.id,
-                         start_time=start_time, end_time=end_time)
-
-
-# 取得部分工單
-@router.get("/order", response_model=List[OrderViewModel])
-def get_some_orders(filter_body: OrderFilterBodyModel, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
-    current_user = authorize_user(Authorize, db)
-
-    if current_user.level > AuthorityLevel.pm.value and filter_body.client_id_list:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
-    if current_user.level > AuthorityLevel.pm.value and filter_body.engineer_id_list:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise HTTPException(status_code=422, detail="""start_time or end_time type fail (example: 2023-01-25) """)
 
     return get_some_order(
-        db, current_user, filter_body.client_id_list,
+        db, current_user,
+        filter_body.client_id_list,
         filter_body.engineer_id_list,
         filter_body.order_issue_id_list,
-        filter_body.status_list
+        filter_body.status_list,
+        start_time,
+        end_time
     )
 
 
@@ -106,9 +129,11 @@ def get_some_orders(filter_body: OrderFilterBodyModel, db: Session = Depends(get
 def delete_order(order_id: OrderDeleteIdModel, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 
+    # check engineer doesn't has authorize to delete order
     if current_user.level == AuthorityLevel.engineer.value:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
+    # check client can't delete order when order is in progress
     if current_user.level == AuthorityLevel.client.value and check_order_status(db, order_id.order_id_list):
         raise HTTPException(status_code=400, detail="One of orders is already in progress")
 
@@ -121,9 +146,11 @@ def modify_order(order_modify_body: OrderModifyModel,
                  db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 
+    # check engineer doesn't has authorize to modify order
     if current_user.level == AuthorityLevel.engineer.value:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
+    # check client can't modify order when order is in progress
     if current_user.level == AuthorityLevel.client.value and check_order_status(db, [order_modify_body.order_id]):
         raise HTTPException(status_code=400, detail="One of orders is already in progress")
 
@@ -135,10 +162,17 @@ def modify_order(order_modify_body: OrderModifyModel,
 def modify_order_status(order_id: int, status: int, background_tasks: BackgroundTasks,
                         db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
+
+    # check order status
     now_status = check_order_status(db, [order_id])
+
+    # check user authorize
     order_db = check_modify_status_permission(current_user, now_status, status)
+
+    # start modify order
     modify_order_status_by_id(db, order_id, status)
 
+    # send email when modify order
     # send_email("judhaha@gmail.com", background_tasks)
     return order_db
 
@@ -148,12 +182,16 @@ def modify_order_status(order_id: int, status: int, background_tasks: Background
 def modify_order_principal_engineer(order_id: int, engineer_id: int, background_tasks: BackgroundTasks,
                                     db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
+
+    # check client doesn't has authorize to modify principal engineer
     if current_user.level == AuthorityLevel.client.value:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
+    # check engineer doesn't has authorize to modify principal engineer to other engineer
     if current_user.level == AuthorityLevel.engineer.value and current_user.id != engineer_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
+    # start modify order principal
     order_db = modify_order_principal_engineer_by_id(db, order_id, engineer_id)
     # send_email("judhaha@gmail.com", background_tasks)
 
@@ -173,6 +211,7 @@ async def upload_picture(order_id: int, file: UploadFile,
                          db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 
+    # check
     if current_user.level in (AuthorityLevel.pm.value, AuthorityLevel.engineer.value):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
@@ -197,17 +236,36 @@ async def delete_picture(order_id: int, file_name: str,
     return delete_picture_from_folder(db, order_id, file_name)
 
 
-
-##################################################
-# @router.get("/test")
-@router.get("/test", response_model=List[OrderViewModel])
-
-def get_all_orders(filter_body: OrderFilterBodyModel, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
+# 上傳照片
+@router.post("/order/picture")
+async def upload_picture(order_id: int, file: UploadFile,
+                         db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 
-    return test_get_some_order(
-        db, current_user.id, filter_body.client_id_list,
-        filter_body.engineer_id_list,
-        filter_body.order_issue_id_list,
-        filter_body.status_list
-    )
+    # check
+    if current_user.level in (AuthorityLevel.pm.value, AuthorityLevel.engineer.value):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    return await upload_picture_to_folder(db, order_id, file)
+
+
+##################################################
+# @router.get("/test", response_model=List[dict])
+@router.get("/test")
+def test_get_all_orders(start_time: Optional[str] = None, end_time: Optional[str] = None,
+                        db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
+    current_user = authorize_user(Authorize, db)
+    try:
+
+        if start_time is not None:
+            start_time = datetime.strptime(start_time, "%Y-%m-%d")
+        if end_time is not None:
+            end_time = datetime.strptime(end_time, "%Y-%m-%d")
+        if start_time is not None and end_time is not None and start_time > end_time:
+            start_time, end_time = end_time, start_time
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=422, detail="""start_time or end_time type fail (example: 2023-01-25) """)
+
+    return test_get_all_order(db, level=current_user.level, user_id=current_user.id,
+                              start_time=start_time, end_time=end_time)
