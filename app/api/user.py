@@ -74,8 +74,8 @@ def get_all_user(db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
 def get_users_by_level(level: int, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 
-    # if not check_level(current_user, AuthorityLevel.pm.value):
-    #     raise HTTPException(status_code=401, detail="Unauthorized")
+    if current_user.level == AuthorityLevel.client.value or current_user.level >= level:
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
     return get_user_by_level(db, level)
 
