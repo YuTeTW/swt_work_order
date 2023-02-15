@@ -34,12 +34,16 @@ router = APIRouter()
 def create_a_user(user_create: UserCreateModel,
                   Authorize: AuthJWT = Depends(), db: Session = Depends(get_db)):
     current_user = authorize_user(Authorize, db)
+
+    # user level doesn't exist
     if user_create.level > AuthorityLevel.client.value or user_create.level < AuthorityLevel.root.value:
         raise HTTPException(status_code=405, detail="Method Not Allowed")
 
-    if current_user.level >= user_create.level or current_user.level >= 2:
+    # check create user authorize
+    if current_user.level > user_create.level or current_user.level >= 2:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
+    # check account
     if get_user_by_email(db, email=user_create.email):
         raise HTTPException(status_code=400, detail="Email already registered")
 
@@ -70,7 +74,7 @@ def get_all_user(db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
 
 
 # 取得User by level
-@router.get("/user/level", response_model=List[UserViewModel])
+@router.get("/user/{level}", response_model=List[UserViewModel])
 def get_users_by_level(level: int, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 
@@ -85,8 +89,12 @@ def get_users_by_level(level: int, db: Session = Depends(get_db), Authorize: Aut
 def patch_user_info(user_patch: UserPatchInfoModel,
                     db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
-    if current_user.level >= user_patch.level or current_user.level > AuthorityLevel.pm.value:
+
+    # check
+    if current_user.level > AuthorityLevel.pm.value or user_patch.level == AuthorityLevel.root.value:
         raise HTTPException(status_code=401, detail="Unauthorized")
+
+
     return modify_user(db, user_patch)
 
 
