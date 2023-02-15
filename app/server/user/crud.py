@@ -26,6 +26,11 @@ def get_user_by_id(db: Session, user_id: int):
     return user_db
 
 
+def get_user_by_level(db: Session, level: int):
+    user_db = db.query(User).filter(User.level == level).all()
+    return user_db
+
+
 def check_user_exist(db: Session, user_id: int):
     return db.query(User).filter(User.id == user_id).first()
 

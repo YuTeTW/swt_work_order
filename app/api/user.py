@@ -16,7 +16,8 @@ from app.server.user.crud import (
     delete_user_by_user_id,
     check_root_exist,
     check_user_exist,
-    get_user_by_id
+    get_user_by_id,
+    get_user_by_level
 )
 from app.models.schemas.user import (
     UserViewModel,
@@ -66,6 +67,17 @@ def get_all_user(db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     return get_all_users(db)
+
+
+# 取得User by level
+@router.get("/user/level", response_model=List[UserViewModel])
+def get_users_by_level(level: int, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
+    current_user = authorize_user(Authorize, db)
+
+    # if not check_level(current_user, AuthorityLevel.pm.value):
+    #     raise HTTPException(status_code=401, detail="Unauthorized")
+
+    return get_user_by_level(db, level)
 
 
 # user id 修改 User Info
