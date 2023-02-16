@@ -1,3 +1,5 @@
+from typing import Union
+
 from fastapi import HTTPException
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
@@ -19,7 +21,7 @@ def create_order_issue(db: Session, order_issue_create: OrderIssueCreateModel) -
         raise HTTPException(status_code=400, detail="Issue severity must be a positive integer")
 
     # Check time range
-    if not isinstance(order_issue_create.time_hours, float) or order_issue_create.time_hours < 0:
+    if isinstance(order_issue_create.time_hours, float) or order_issue_create.time_hours < 0:
         raise HTTPException(status_code=400, detail="Issue time hours have to more than 0")
 
     try:

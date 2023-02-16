@@ -10,6 +10,7 @@ class Order(Base):
     client_id = Column(Integer, ForeignKey("users.id"), index=True)
     engineer_id = Column(Integer, ForeignKey("users.id"), index=True, default=0)
     order_issue_id = Column(Integer, ForeignKey("order_issue.id"), index=True)
+    reporter_id = Column(Integer, ForeignKey("users.id"), index=True)
     serial_number = Column(String, default="")
     company_name = Column(String)
     status = Column(Integer, index=True, default=0)
@@ -20,10 +21,11 @@ class Order(Base):
     created_at = Column(DateTime, index=True, default=datetime.now())
     updated_at = Column(DateTime, default=datetime.now())
 
-    def __init__(self, client_id, company_name,
+    def __init__(self, client_id, company_name, reporter_id,
                  order_issue_id, description, detail, **kwargs):
         self.client_id = client_id
         self.order_issue_id = order_issue_id
+        self.reporter_id = reporter_id
         self.company_name = company_name
         self.description = description
         self.detail = detail

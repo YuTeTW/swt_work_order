@@ -53,6 +53,7 @@ class OrderViewinfoModel(OrderBase):
 
 class OrderViewModel(OrderBase):
     id: int
+    reporter_id: int
     company_name: str
     mark: bool
     status: int
@@ -62,6 +63,8 @@ class OrderViewModel(OrderBase):
     description: str
     detail: list
     created_at: datetime
+    updated_at: datetime
+
 
 
 class OrderViewModel2(OrderBase):
@@ -97,7 +100,7 @@ class OrderModifyModel(OrderBase):
     order_id: int
     order_issue_id: int
     description: str
-    detail: str
+    detail: list
 
 
 class OrderMarkPost(OrderBase):
@@ -108,4 +111,3 @@ class OrderMarkPost(OrderBase):
 class OrderGetFilterTimeModel(OrderBase):
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
-

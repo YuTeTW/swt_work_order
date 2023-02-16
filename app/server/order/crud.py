@@ -1,4 +1,5 @@
 import os
+from typing import List
 
 from fastapi import HTTPException, Response
 from sqlalchemy import and_
@@ -12,13 +13,18 @@ from app.models.domain.user import User
 from app.models.domain.user_mark_order import UserMarkOrder
 from app.models.schemas.order import OrderModifyModel, OrderViewModel, OrderCreateModel, OrderMarkPost
 
+import jpype
+import asposecells
+jpype.startJVM()
 
-def create_order(db: Session, company_name, order_create: OrderCreateModel):
+
+def create_order(db: Session, reporter_id, company_name, order_create: OrderCreateModel):
     if not db.query(User).filter(User.id == order_create.client_id).first():
         raise UnicornException(name=create_order.__name__, description='client user not found', status_code=404)
     try:
         order_create.detail = str(order_create.detail)
         db_order = Order(**order_create.dict(),
+                         reporter_id=reporter_id,
                          company_name=company_name)
         db.add(db_order)
         db.commit()
@@ -32,12 +38,14 @@ def create_order(db: Session, company_name, order_create: OrderCreateModel):
     return db_order
 
 
+
 def get_order_view_model(each_order, engineer_name, issue_name, mark):
     engineer_name = engineer_name if engineer_name else "未指派"
     issue_name = issue_name if issue_name else "未選擇問題種類"
     mark = mark if mark else False
     return OrderViewModel(
         id=each_order.id,
+        reporter_id=each_order.reporter_id,
         company_name=each_order.company_name,
         description=each_order.description,
         detail=eval(each_order.detail),
@@ -46,6 +54,7 @@ def get_order_view_model(each_order, engineer_name, issue_name, mark):
         mark=mark,
         status=each_order.status,
         created_at=each_order.created_at,
+        updated_at=each_order.updated_at,
         file_name=eval(each_order.file_name)
     )
 
@@ -76,7 +85,8 @@ def get_all_order(db: Session, level, user_id, start_time, end_time):
     return view_models
 
 
-def get_some_order(db: Session, user_id, client_id_list, engineer_id_list, order_issue_id_list, status_list):
+def get_some_order(db: Session, user_id, client_id_list, engineer_id_list, order_issue_id_list, status_list,
+                   start_time, end_time):
     # Join the Order table with the User and OrderIssue tables
     order_db = db.query(Order, User.name, OrderIssue.name, UserMarkOrder.mark).outerjoin(
         User, Order.engineer_id == User.id
@@ -97,6 +107,10 @@ def get_some_order(db: Session, user_id, client_id_list, engineer_id_list, order
         order_db = order_db.filter(Order.order_issue_id.in_(order_issue_id_list))
     if status_list:
         order_db = order_db.filter(Order.status.in_(status_list))
+    if start_time:
+        order_db = order_db.filter(Order.created_at > start_time)
+    if end_time:
+        order_db = order_db.filter(Order.created_at < end_time)
 
     # Convert each order to a view model
     view_models = [get_order_view_model(each_order, engineer_name, issue_name, mark)
@@ -133,15 +147,15 @@ def delete_order_by_id(db: Session, order_id_list):
 
 
 def modify_order_by_id(db: Session, order_modify: OrderModifyModel):
-    order_db = db.query(Order).filter(Order.id == order_modify.order_id)
-    if not order_db.first():
+    order_db = db.query(Order).filter(Order.id == order_modify.order_id).first()
+    if not order_db:
         raise UnicornException(name=modify_order_by_id.__name__, description='order not found', status_code=404)
     order_db.order_issue_id = order_modify.order_issue_id
     order_db.description = order_modify.description
-    order_db.detail = order_modify.detail
+    order_db.detail = str(order_modify.detail)
     order_db.updated_at = datetime.now()
     db.commit()
-    return order_db
+    return "Order modify successfully"
 
 
 def check_modify_status_permission(current_user, now_status, status):
@@ -283,31 +297,124 @@ def delete_picture_from_folder(db: Session, order_id, file_name):
     return "Image deleted successfully"
 
 
-def test_get_some_order(db: Session, user_id, client_id_list, engineer_id_list, order_issue_id_list, status_list):
-    # Join the Order table with the User and OrderIssue tables
-    order_db = db.query(Order, User.name, OrderIssue.name, UserMarkOrder.mark).outerjoin(
-        User, Order.engineer_id == User.id
-    ).outerjoin(
-        OrderIssue, Order.order_issue_id == OrderIssue.id
-    ).outerjoin(
-        UserMarkOrder, and_(
-            UserMarkOrder.order_id == Order.id,
-            UserMarkOrder.user_id == user_id
-        )
-    )
+async def get_report():
+    from asposecells.api import Workbook, FileFormatType, PdfSaveOptions
+    workbook = Workbook("order.xlsx")
+    saveOptions = PdfSaveOptions()
+    saveOptions.setOnePagePerSheet(True)
+    workbook.save("zxample.pdf", saveOptions)
 
+    jpype.shutdownJVM()
 
-    if client_id_list:
-        order_db = order_db.filter(Order.client_id.in_(client_id_list))
-    if engineer_id_list:
-        order_db = order_db.filter(Order.engineer_id.in_(engineer_id_list))
-    if order_issue_id_list:
-        order_db = order_db.filter(Order.order_issue_id.in_(order_issue_id_list))
-    if status_list:
-        order_db = order_db.filter(Order.status.in_(status_list))
+def test_get_all_order(db: Session, level, user_id, start_time, end_time):
+    pass
+    # # order_db = db.query(Order.id,
+    # #                     Order.status,
+    # #                     Order.company_name,
+    # #                     Order.created_at,
+    # #                     Order.detail,
+    # #                     Order.description,
+    # #                     Order.file_name,
+    # #                     Order.engineer_id,
+    # #                     Order.client_id,
+    # #                     User.name, OrderIssue.name, UserMarkOrder.mark).outerjoin(
+    # #     User, Order.engineer_id == User.id
+    # # ).outerjoin(
+    # #     OrderIssue, Order.order_issue_id == OrderIssue.id
+    # # ).outerjoin(
+    # #     UserMarkOrder, and_(
+    # #         UserMarkOrder.order_id == Order.id,
+    # #         UserMarkOrder.user_id == user_id
+    # #     )
+    # # )
+    # #
+    # # if level == 2:
+    # #     order_db = order_db.filter(Order.engineer_id == user_id)
+    # # if level == 3:
+    # #     order_db = order_db.filter(Order.client_id == user_id)
+    # # if start_time:
+    # #     order_db = order_db.filter(Order.created_at > start_time)
+    # # if end_time:
+    # #     order_db = order_db.filter(Order.created_at < end_time)
+    #
+    # # print(type(order_db[0]))
+    # # print(order_db.all()[0][0])
+    # # print(type(order_db.all()))
+    #
+    # # order_db = db.query(Order)
+    # # if start_time:
+    # #     order_db = order_db.filter(Order.created_at > start_time)
+    # # if end_time:
+    # #     order_db = order_db.filter(Order.created_at < end_time)
+    # #
+    # # print(type(order_db.all()[0]))
+    #
+    # # order_db = db.query(Order.id.label("id"),
+    # #                   Order.status,
+    # #                   Order.company_name,
+    # #                   Order.created_at,
+    # #                   Order.detail,
+    # #                   Order.description,
+    # #                   Order.file_name,
+    # #                   User.name.label("engineer_name"),
+    # #                   OrderIssue.name.label("issue_name"),
+    # #                   UserMarkOrder.mark). \
+    # #     outerjoin(User, Order.engineer_id == User.id). \
+    # #     outerjoin(OrderIssue, Order.order_issue_id == OrderIssue.id). \
+    # #     outerjoin(UserMarkOrder, and_(UserMarkOrder.order_id == Order.id, UserMarkOrder.user_id == user_id))
+    #
+    # # if start_time:
+    # #     order_db = order_db.filter(Order.created_at > start_time)
+    # # if end_time:
+    # #     order_db = order_db.filter(Order.created_at < end_time)
+    # #
+    # # view_models = map(lambda r: OrderViewModel(), order_db.all())
+    # # print(view_models)
+    #
+    # # return list(view_models)
+    #
+    # # view_models = [get_order_view_model(each_order, engineer_name, issue_name, mark)
+    # #                for each_order, engineer_name, issue_name, mark in order_db]
+    # # return view_models
+    #
+    # from pydantic import BaseModel
+    # class OrderViewModel2(BaseModel):
+    #     id: int
+    #     status: str
+    #     engineer_name: str
+    #     issue_name: str
+    #     mark: int = 0
+    #
+    #     # def __init__(self, id, status,engineer_name, issue_name, mark):
+    #     #     self.id = id
+    #     #     self.status = status
+    #     #     self.engineer_name = engineer_name
+    #     #     self.issue_name = issue_name
+    #     #     self.mark = mark
+    #
+    #
+    #
+    # order_db = db.query(Order.id.label("id"),
+    #                     Order.status,
+    #                     User.name.label("engineer_name"),
+    #                     OrderIssue.name.label("issue_name"),
+    #                     UserMarkOrder.mark). \
+    #     outerjoin(User, Order.engineer_id == User.id). \
+    #     outerjoin(OrderIssue, Order.order_issue_id == OrderIssue.id). \
+    #     outerjoin(UserMarkOrder, and_(UserMarkOrder.order_id == Order.id, UserMarkOrder.user_id == user_id))
+    #
+    # if start_time:
+    #     order_db = order_db.filter(Order.created_at > start_time)
+    # if end_time:
+    #     order_db = order_db.filter(Order.created_at < end_time)
 
-    # Convert each order to a view model
-    view_models = [get_order_view_model(each_order, engineer_name, issue_name, mark)
-                   for each_order, engineer_name, issue_name, mark in order_db]
+    # view_models = [OrderViewModel2(**row._asdict()) for row in order_db.all()]
+    # print(order_db[0][4])
 
-    return view_models
+    # print(order_db[0]._asdict())
+    # return view_models
+    # print(type(order_db.all()[0][0]))
+
+    # view_models = map(lambda r: OrderViewModel2(*r), order_db.all())
+    # for i in view_models:
+    #     print(i)
