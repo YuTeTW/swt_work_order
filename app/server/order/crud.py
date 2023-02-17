@@ -15,6 +15,9 @@ from app.models.schemas.order import OrderModifyModel, OrderViewModel, OrderCrea
 
 import jpype
 import asposecells
+
+from app.server.authentication import AuthorityLevel
+
 jpype.startJVM()
 
 
@@ -158,16 +161,40 @@ def modify_order_by_id(db: Session, order_modify: OrderModifyModel):
     return "Order modify successfully"
 
 
-def check_modify_status_permission(current_user, now_status, status):
-    if current_user.level == 3:  # client
-        if now_status != 2 or status not in [1, 3]:
-            raise HTTPException(status_code=401, detail="Unauthorized")
-    elif current_user.level == 2:  # engineer
+def check_modify_status_permission(db: Session, current_user, now_status: int, status: int, order_id: int):
+    # check client change status auth
+    if current_user.level == AuthorityLevel.client.value:  # client
+        if not db.query(Order).filter(Order.id == order_id).first():
+            raise HTTPException(
+                status_code=401,
+                detail="order isn't yours"
+            )
+        if now_status != 2:
+            raise HTTPException(
+                status_code=401,
+                detail="client only can change status when order finish"
+            )
+        if status not in [1, 3]:
+            raise HTTPException(
+                status_code=401,
+                detail="client only can change status to in process or closing order when order finish"
+            )
+
+    # check engineer change status auth
+    elif current_user.level == AuthorityLevel.engineer.value:  # engineer
         if status in [3, 0]:
-            raise HTTPException(status_code=401, detail="Unauthorized")
-    elif current_user.level == 1:  # pm
+            raise HTTPException(
+                status_code=401,
+                detail="engineer only can change status to not appoint or finish"
+            )
+
+    # check pm change status auth
+    elif current_user.level == AuthorityLevel.pm.value:  # pm
         if status == 3:
-            raise HTTPException(status_code=401, detail="Unauthorized")
+            raise HTTPException(
+                status_code=401,
+                detail="pm can't change status to close"
+            )
 
 
 def modify_order_status_by_id(db: Session, order_id: int, status: int):
@@ -176,7 +203,8 @@ def modify_order_status_by_id(db: Session, order_id: int, status: int):
         raise UnicornException(
             name=modify_order_principal_engineer_by_id.__name__,
             description='order not found',
-            status_code=404)
+            status_code=404
+        )
     order_db.status = status
     order_db.updated = datetime.now()
     db.commit()
