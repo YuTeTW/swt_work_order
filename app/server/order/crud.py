@@ -13,12 +13,12 @@ from app.models.domain.user import User
 from app.models.domain.user_mark_order import UserMarkOrder
 from app.models.schemas.order import OrderModifyModel, OrderViewModel, OrderCreateModel, OrderMarkPost
 
-import jpype
-import asposecells
+# import jpype
+# import asposecells
 
 from app.server.authentication import AuthorityLevel
 
-jpype.startJVM()
+# jpype.startJVM()
 
 
 def create_order(db: Session, reporter_id, company_name, order_create: OrderCreateModel):
@@ -123,7 +123,8 @@ def get_some_order(db: Session, user_id, client_id_list, engineer_id_list, order
 
 
 def check_order_status(db: Session, order_id_list):
-    return db.query(Order).filter(Order.id.in_(order_id_list), Order.status != 0).first()
+    order_db = db.query(Order).filter(Order.id.in_(order_id_list), Order.status != 0).first()
+    return order_db.status
 
 
 def delete_order_by_id(db: Session, order_id_list):
@@ -163,6 +164,7 @@ def modify_order_by_id(db: Session, order_modify: OrderModifyModel):
 
 def check_modify_status_permission(db: Session, current_user, now_status: int, status: int, order_id: int):
     # check client change status auth
+    print(now_status)
     if current_user.level == AuthorityLevel.client.value:  # client
         if not db.query(Order).filter(Order.id == order_id).first():
             raise HTTPException(
