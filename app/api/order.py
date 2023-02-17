@@ -168,14 +168,14 @@ def modify_order_status(order_id: int, status: int, background_tasks: Background
     now_status = check_order_status(db, [order_id])
 
     # check user authorize
-    order_db = check_modify_status_permission(current_user, now_status, status)
+    check_modify_status_permission(db, current_user, now_status, status, order_id)
 
     # start modify order
     modify_order_status_by_id(db, order_id, status)
 
     # send email when modify order
     # send_email("judhaha@gmail.com", background_tasks)
-    return order_db
+    return "Change order status finish"
 
 
 # 修改工單負責工程師
@@ -186,11 +186,11 @@ def modify_order_principal_engineer(order_id: int, engineer_id: int, background_
 
     # check client doesn't has authorize to modify principal engineer
     if current_user.level == AuthorityLevel.client.value:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise HTTPException(status_code=401, detail="client can't change principal engineer")
 
     # check engineer doesn't has authorize to modify principal engineer to other engineer
     if current_user.level == AuthorityLevel.engineer.value and current_user.id != engineer_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise HTTPException(status_code=401, detail="engineer can't change principal to other engineer")
 
     # start modify order principal
     order_db = modify_order_principal_engineer_by_id(db, order_id, engineer_id)
