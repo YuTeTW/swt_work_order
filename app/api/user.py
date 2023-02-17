@@ -74,7 +74,7 @@ def get_all_user(db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
 
 
 # 取得User by level
-@router.get("/user/{level}", response_model=List[UserViewModel])
+@router.get("/user/level/{level}", response_model=List[UserViewModel])
 def get_users_by_level(level: int, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 

@@ -23,7 +23,7 @@ from app.server.order.crud import (
     upload_picture_to_folder,
     download_picture_from_folder,
     delete_picture_from_folder,
-    test_get_all_order
+    get_a_order,
 )
 
 from app.models.schemas.order import (
@@ -57,7 +57,7 @@ async def create_a_order(order_create: OrderCreateModel, background_tasks: Backg
     if current_user.level == AuthorityLevel.client.value and current_user.id != order_create.client_id:
         raise HTTPException(status_code=401, detail="Client only create order for self")
 
-    order_db = create_order(db, user_db.name, order_create)
+    order_db = create_order(db, current_user.id, user_db.name, order_create)
 
     # Send email after create new order
     # send_email("judhaha@gmail.com", background_tasks)
@@ -76,6 +76,7 @@ def get_all_orders(start_time: Optional[str] = None, end_time: Optional[str] = N
             start_time = datetime.strptime(start_time, "%Y-%m-%d")
         if end_time is not None:
             end_time = datetime.strptime(end_time, "%Y-%m-%d")
+            end_time = end_time + timedelta(days=1)
         if start_time is not None and end_time is not None and start_time > end_time:
             start_time, end_time = end_time, start_time
             end_time = end_time + timedelta(days=1)
@@ -107,6 +108,7 @@ def get_some_orders(filter_body: OrderFilterBodyModel, start_time: Optional[str]
             start_time = datetime.strptime(start_time, "%Y-%m-%d")
         if end_time is not None:
             end_time = datetime.strptime(end_time, "%Y-%m-%d")
+            end_time = end_time + timedelta(days=1)
         if start_time is not None and end_time is not None and start_time > end_time:
             start_time, end_time = end_time, start_time
             end_time = end_time + timedelta(days=1)
@@ -123,6 +125,13 @@ def get_some_orders(filter_body: OrderFilterBodyModel, start_time: Optional[str]
         start_time,
         end_time
     )
+
+
+# 取得單一工單
+@router.get("/order/single/{order_id}", response_model=OrderViewModel)
+def get_a_order_by_id(order_id: int, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
+    current_user = authorize_user(Authorize, db)
+    return get_a_order(db, order_id, current_user.id)
 
 
 # 刪除工單
@@ -171,6 +180,7 @@ def modify_order_status(order_id: int, status: int, background_tasks: Background
     check_modify_status_permission(db, current_user, now_status, status, order_id)
 
     # start modify order
+    print("change: ", status)
     modify_order_status_by_id(db, order_id, status)
 
     # send email when modify order
@@ -179,7 +189,7 @@ def modify_order_status(order_id: int, status: int, background_tasks: Background
 
 
 # 修改工單負責工程師
-@router.patch("/order/principal")
+@router.patch("/order/engineer")
 def modify_order_principal_engineer(order_id: int, engineer_id: int, background_tasks: BackgroundTasks,
                                     db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
@@ -248,6 +258,15 @@ async def upload_picture(order_id: int, file: UploadFile,
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     return await upload_picture_to_folder(db, order_id, file)
+
+
+# 上傳照片
+@router.get("/order/report")
+async def upload_picture(
+                         db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
+    current_user = authorize_user(Authorize, db)
+
+    return await get_report()
 
 
 ##################################################

@@ -74,14 +74,19 @@ def get_all_order(db: Session, level, user_id, start_time, end_time):
         )
     )
 
+    # engineer only get h
     if level == 2:
-        order_db = order_db.filter(Order.engineer_id == user_id)
+        order_db = order_db.filter(Order.engineer_id.in_([user_id, 0]))
+
     if level == 3:
         order_db = order_db.filter(Order.client_id == user_id)
+
     if start_time:
         order_db = order_db.filter(Order.created_at > start_time)
+
     if end_time:
         order_db = order_db.filter(Order.created_at < end_time)
+
 
     view_models = [get_order_view_model(each_order, engineer_name, issue_name, mark)
                    for each_order, engineer_name, issue_name, mark in order_db]
@@ -122,9 +127,33 @@ def get_some_order(db: Session, user_id, client_id_list, engineer_id_list, order
     return view_models
 
 
+def get_a_order(db, order_id, user_id):
+    # Join the Order table with the User and OrderIssue tables
+    order_db = db.query(Order, User.name, OrderIssue.name, UserMarkOrder.mark).outerjoin(
+        User, Order.engineer_id == User.id
+    ).outerjoin(
+        OrderIssue, Order.order_issue_id == OrderIssue.id
+    ).outerjoin(
+        UserMarkOrder, and_(
+            UserMarkOrder.order_id == Order.id,
+            UserMarkOrder.user_id == user_id
+        )
+    ).filter(Order.id == order_id)
+
+    view_models = [get_order_view_model(each_order, engineer_name, issue_name, mark)
+                   for each_order, engineer_name, issue_name, mark in order_db]
+
+    return view_models[0]
+
+
 def check_order_status(db: Session, order_id_list):
     order_db = db.query(Order).filter(Order.id.in_(order_id_list), Order.status != 0).first()
-    return order_db.status
+    print(order_db)
+    if order_db:
+        status = order_db.status
+    else:
+        status = None
+    return status
 
 
 def delete_order_by_id(db: Session, order_id_list):
@@ -166,7 +195,7 @@ def check_modify_status_permission(db: Session, current_user, now_status: int, s
     # check client change status auth
     print(now_status)
     if current_user.level == AuthorityLevel.client.value:  # client
-        if not db.query(Order).filter(Order.id == order_id).first():
+        if not db.query(Order).filter(Order.id == order_id, Order.client_id == current_user.id).first():
             raise HTTPException(
                 status_code=401,
                 detail="order isn't yours"
@@ -176,10 +205,10 @@ def check_modify_status_permission(db: Session, current_user, now_status: int, s
                 status_code=401,
                 detail="client only can change status when order finish"
             )
-        if status not in [1, 3]:
+        if status not in [1, 3] and status != 2:
             raise HTTPException(
                 status_code=401,
-                detail="client only can change status to in process or closing order when order finish"
+                detail="client only can change status to 'in process' or 'closing order' when order finish"
             )
 
     # check engineer change status auth
@@ -207,6 +236,7 @@ def modify_order_status_by_id(db: Session, order_id: int, status: int):
             description='order not found',
             status_code=404
         )
+    # status
     order_db.status = status
     order_db.updated = datetime.now()
     db.commit()
@@ -214,16 +244,16 @@ def modify_order_status_by_id(db: Session, order_id: int, status: int):
 
 
 def modify_order_principal_engineer_by_id(db: Session, order_id: int, engineer_id: int):
-    order_db = db.query(Order).filter(Order.id == order_id).first()
+    order_db = db.query(Order).filter(Order.id == order_id, Order.id == order_id).first()
     if not order_db:
         raise UnicornException(
             name=modify_order_principal_engineer_by_id.__name__,
             description='order not found',
             status_code=404)
 
-    status = 1 if order_db.status == 0 else order_db.status
+    # status = 1 if order_db.status == 0 else order_db.status
     order_db.engineer_id = engineer_id
-    order_db.status = status
+    # order_db.status = status
     order_db.updated = datetime.now()
     db.commit()
     return order_db
@@ -275,18 +305,9 @@ def order_mark_by_user(db: Session, user_id, order_mark: OrderMarkPost):
 
 
 async def upload_picture_to_folder(db: Session, order_id, picture_file):
-    file_dir = os.path.join(os.getcwd(), "db_image/order_pic_name_by_id/")
+    file_dir = os.path.join(os.getcwd(), f"db_image/order_pic_name_by_id/{order_id}/")
     os.makedirs(file_dir, exist_ok=True)
-    order = db.query(Order).filter_by(id=order_id).first()
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
     try:
-        file_names = eval(order.file_name)
-        if picture_file.filename not in file_names:
-            file_names.append(picture_file.filename)
-            order.file_name = str(file_names)
-            order.updated_at = datetime.now()
-            db.commit()
         file_path = os.path.join(file_dir, picture_file.filename)
         with open(file_path, "wb") as f:
             f.write(await picture_file.read())
@@ -296,34 +317,34 @@ async def upload_picture_to_folder(db: Session, order_id, picture_file):
     return {"message": "Image uploaded successfully"}
 
 
-def download_picture_from_folder(order_id):
-    file_path = os.getcwd() + "/db_image/order_pic_name_by_id/" + str(order_id) + ".jpg"
+def download_picture_from_folder(order_id, file_name):
+    file_path = os.getcwd() + f"/db_image/order_pic_name_by_id/{order_id}/" + file_name
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Image doesn't exist.")
     try:
-        with open(file_path, "rb") as image_file:
-            image_data = image_file.read()
-            return Response(content=image_data, media_type="image/jpeg")
+        from starlette.responses import FileResponse
+
+        # 如果檔案是圖片，直接顯示
+        if file_name.endswith(".jpg") or file_name.endswith(".png"):
+            image_path = f"/path/to/your/images/{file_name}"
+            return FileResponse(image_path, media_type="image/png")
+
+        # 如果檔案是其他類型，下載
+        else:
+            file_path = f"/path/to/your/files/{file_name}"
+            return FileResponse(file_path)
     except Exception as e:
         raise HTTPException(status_code=500, detail="Failed to download image")
 
 
 def delete_picture_from_folder(db: Session, order_id, file_name):
-    file_path = os.getcwd() + "/db_image/order_pic_name_by_id/" + str(file_name)
-    order = db.query(Order).filter_by(id=order_id).first()
+    file_path = os.getcwd() + f"/db_image/order_pic_name_by_id/{order_id}/" + str(file_name)
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Image doesn't exist.")
-    else:
-        try:
-            os.remove(file_path)
-            file_names = eval(order.file_name)
-            if file_name in file_names:
-                file_names.remove(file_name)
-                order.file_name = str(file_names)
-                order.updated_at = datetime.now()
-                db.commit()
-        except Exception as e:
-            raise HTTPException(status_code=500, detail="Failed to Delete image")
+    try:
+        os.remove(file_path)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Failed to Delete image")
     return "Image deleted successfully"
 
 
