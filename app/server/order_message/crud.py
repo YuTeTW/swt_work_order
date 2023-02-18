@@ -7,13 +7,13 @@ from app.models.domain.Error_handler import UnicornException
 from app.models.domain.user import User
 
 
-def create_order_message(db: Session, order_message_create):
+def create_order_message(db: Session, order_message_create, user_id):
     if not db.query(Order).filter(Order.id == order_message_create.order_id).first():
         raise UnicornException(
             name=modify_order_message_by_id.__name__, description="order doesn't exist", status_code=404
         )
     try:
-        db_user = OrderMessage(**order_message_create.dict())
+        db_user = OrderMessage(**order_message_create.dict(), user_id=user_id)
         db.add(db_user)
         db.commit()
         db.refresh(db_user)

@@ -15,6 +15,7 @@ from app.server.order_message.crud import (
 
 from app.models.schemas.order_message import (
     OrderMessageCreateModel,
+    OrderMessageCreateViewModel,
     OrderMessageViewModel,
     OrderMessageModifyModel
 )
@@ -22,7 +23,7 @@ router = APIRouter()
 
 
 # 新增工單訊息
-@router.post("/order_message", response_model=OrderMessageViewModel)
+@router.post("/order_message")
 def create_a_order_message(order_message_create: OrderMessageCreateModel,
                            Authorize: AuthJWT = Depends(), db: Session = Depends(get_db)):
     current_user = authorize_user(Authorize, db)
@@ -30,10 +31,10 @@ def create_a_order_message(order_message_create: OrderMessageCreateModel,
     if current_user.level > AuthorityLevel.engineer.value:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-    if current_user.level != AuthorityLevel.root.value and current_user.id != order_message_create.user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    # if current_user.level != AuthorityLevel.root.value:
+    #     raise HTTPException(status_code=401, detail="Unauthorized")
 
-    return create_order_message(db, order_message_create)
+    return create_order_message(db, order_message_create, current_user.id)
 
 
 # 取得工單訊息
