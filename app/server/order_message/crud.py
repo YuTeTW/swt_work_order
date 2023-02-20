@@ -2,9 +2,12 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 
 from app.models.domain.order import Order
+from app.models.domain.order_issue import OrderIssue
 from app.models.domain.order_message import OrderMessage
 from app.models.domain.Error_handler import UnicornException
 from app.models.domain.user import User
+from app.models.schemas.order import OrderModifyModel
+from app.models.schemas.order_message import OrderMessageCreateModel
 
 
 def create_order_message(db: Session, order_message_create, user_id):
@@ -67,3 +70,84 @@ def modify_order_message_by_id(db: Session, order_message_modify):
     )
     db.commit()
     return order_db
+
+
+def create_message_cause_order_info(db: Session, user_id, order_modify_body: OrderModifyModel):
+    old_order_db = db.query(Order).filter(Order.id == order_modify_body.order_id).first()
+    old_order_issue_db = db.query(OrderIssue).filter(OrderIssue.id == old_order_db.order_issue_id).first()
+    order_issue_db = db.query(OrderIssue).filter(OrderIssue.id == order_modify_body.order_issue_id).first()
+    old_order_description = old_order_db.description
+    new_order_description = order_modify_body.description
+    old_order_detail = eval(old_order_db.detail)
+    new_order_detail = order_modify_body.detail
+
+    if old_order_db.order_issue_id != order_modify_body.order_issue_id:
+        create_order_message(db, OrderMessageCreateModel(
+            order_id=order_modify_body.order_id,
+            message=f"[Auto]已將提報類型由'{old_order_issue_db.name}'改為'{order_issue_db.name}'"), user_id)
+
+    if old_order_description != new_order_description:
+        create_order_message(db, OrderMessageCreateModel(
+            order_id=order_modify_body.order_id,
+            message=f"[Auto]已將問題簡述由'{old_order_db.description}'改為'{order_description}'"), user_id)
+
+    if old_order_detail != new_order_detail:
+        # set two list
+        old_detail_set = set(old_order_detail)
+        new_detail_set = set(new_order_detail)
+
+        # find decreased detail
+        decreased_list = list(old_detail_set - new_detail_set)
+
+        # find increased detail
+        increased_list = list(new_detail_set - old_detail_set)
+
+        # create order detail message
+        for decreased in decreased_list:
+            create_order_message(db, OrderMessageCreateModel(
+                order_id=order_modify_body.order_id,
+                message=f"[自動]問題詳情已刪除'{decreased}'"), user_id)
+
+        for increased in increased_list:
+            create_order_message(db, OrderMessageCreateModel(
+                order_id=order_modify_body.order_id,
+                message=f"[自動]問題詳情已新增'{increased}'"), user_id)
+
+
+def create_message_cause_status(db: Session, order_id: int, user_id: int, now_status: int, status: int):
+    # change status from integer to mandarin
+    name_status = {
+        0: "未處理",
+        1: "處理中",
+        2: "已處理",
+        3: "結單"
+    }
+    named_status = name_status[status]
+    named_now_status = name_status[now_status]
+
+    # auto create message
+    create_order_message(db, OrderMessageCreateModel(
+        order_id=order_id, message=f"[自動]已將狀態由'{named_status}'轉為'{named_now_status}'"), user_id)
+
+
+def create_message_cause_engineer(db: Session, order_id: int, engineer_id: int, user_id):
+    # change engineer name from id to mandarin
+    now_engineer_db = db.query(User).join(
+        Order, Order.engineer_id == User.id).filter(Order.id == order_id).first()
+    after_engineer_db = db.query(User).filter(User.id == engineer_id).first()
+
+    # check order is appointed or not
+    if now_engineer_db:
+        now_engineer_name = now_engineer_db.name
+    else:
+        now_engineer_name = "未指派"
+
+    after_engineer_name = after_engineer_db.name
+
+    # auto create message
+    create_order_message(db,
+                         OrderMessageCreateModel(
+                             order_id=order_id,
+                             message=f"[自動]已將工單負責工程師由'{now_engineer_name}'轉為'{after_engineer_name}'"
+                         ),
+                         user_id)

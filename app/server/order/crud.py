@@ -20,6 +20,10 @@ from app.server.authentication import AuthorityLevel
 
 # jpype.startJVM()
 
+def get_order_status(db: Session, order_id):
+    order_db = db.query(Order).filter(Order.id == order_id).first()
+    return order_db.status
+
 
 def create_order(db: Session, reporter_id, company_name, order_create: OrderCreateModel):
     if not db.query(User).filter(User.id == order_create.client_id).first():
@@ -73,10 +77,11 @@ def get_all_order(db: Session, level, user_id, start_time, end_time):
             UserMarkOrder.user_id == user_id
         )
     )
-
     # engineer only get h
+    print(user_id)
+    print(level)
     if level == 2:
-        order_db = order_db.filter(Order.engineer_id.in_([user_id, 0]))
+        order_db = order_db.filter(Order.engineer_id.in_([0, user_id]))
 
     if level == 3:
         order_db = order_db.filter(Order.client_id == user_id)
@@ -251,9 +256,9 @@ def modify_order_principal_engineer_by_id(db: Session, order_id: int, engineer_i
             description='order not found',
             status_code=404)
 
-    # status = 1 if order_db.status == 0 else order_db.status
+    status = 1 if order_db.status == 0 else order_db.status
     order_db.engineer_id = engineer_id
-    # order_db.status = status
+    order_db.status = status
     order_db.updated = datetime.now()
     db.commit()
     return order_db

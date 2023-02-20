@@ -14,8 +14,8 @@ class User(Base):
     is_enable = Column(Boolean, default=True)
     status = Column(Integer, index=True)
     info = Column(JSON)
-    created_at = Column(DateTime, index=True, default=datetime.now())
-    updated_at = Column(DateTime, index=True, default=datetime.now())
+    created_at = Column(DateTime, index=True)
+    updated_at = Column(DateTime, index=True)
 
 
     def __init__(self, email, password, name, info, is_enable, level, status, **kwargs):
@@ -26,6 +26,8 @@ class User(Base):
         self.level = level
         self.status = status
         self.info = info
+        self.created_at = datetime.now()
+        self.updated_at = datetime.now()
 
 
     def __repr__(self):

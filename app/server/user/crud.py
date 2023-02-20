@@ -45,9 +45,11 @@ def modify_user(db: Session, user_patch: UserPatchInfoModel):
         user_db_info = user_db.info.copy()
         user_db.level = user_patch.level
         user_db.name = user_patch.name
+        user_db.status = user_patch.status
         user_db_info["contact_email"] = user_patch.contact_email
         user_db_info["telephone_number"] = user_patch.telephone_number
-        user_db_info["line"] = user_patch.line
+        user_db_info["line_id"] = user_patch.line
+        user_db_info["note"] = user_patch.note
         user_db.info = user_db_info
         user_db.updated_at = datetime.now()
         db.commit()
