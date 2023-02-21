@@ -24,6 +24,7 @@ from app.server.order.crud import (
     download_picture_from_folder,
     delete_picture_from_folder,
     get_a_order,
+    get_report
 )
 
 from app.models.schemas.order import (
@@ -260,13 +261,13 @@ async def upload_picture(order_id: int, file: UploadFile,
     return await upload_picture_to_folder(db, order_id, file)
 
 
-# 上傳照片
+# 下載pdf
 @router.get("/order/report")
 async def upload_picture(
                          db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 
-    return await get_report()
+    return await get_report(db, current_user.id)
 
 
 ##################################################

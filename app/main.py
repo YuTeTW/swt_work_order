@@ -1,3 +1,5 @@
+import jpype
+
 from app import create_app
 from app.db.database import get_db
 from app.models.domain.Error_handler import ErrorHandler, UnicornException
@@ -5,6 +7,15 @@ from starlette.responses import JSONResponse
 from fastapi_jwt_auth.exceptions import AuthJWTException
 from fastapi import Request
 app = create_app()
+
+
+@app.on_event("startup")
+def startup_event():
+    jpype.startJVM()
+
+@app.on_event("shutdown")
+def shutdown_event():
+    jpype.shutdownJVM()
 
 
 @app.exception_handler(UnicornException)
