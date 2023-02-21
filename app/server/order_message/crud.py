@@ -74,22 +74,25 @@ def modify_order_message_by_id(db: Session, order_message_modify):
 
 def create_message_cause_order_info(db: Session, user_id, order_modify_body: OrderModifyModel):
     old_order_db = db.query(Order).filter(Order.id == order_modify_body.order_id).first()
+
     old_order_issue_db = db.query(OrderIssue).filter(OrderIssue.id == old_order_db.order_issue_id).first()
-    order_issue_db = db.query(OrderIssue).filter(OrderIssue.id == order_modify_body.order_issue_id).first()
+    new_order_issue_db = db.query(OrderIssue).filter(OrderIssue.id == order_modify_body.order_issue_id).first()
+
     old_order_description = old_order_db.description
     new_order_description = order_modify_body.description
+
     old_order_detail = eval(old_order_db.detail)
     new_order_detail = order_modify_body.detail
 
     if old_order_db.order_issue_id != order_modify_body.order_issue_id:
         create_order_message(db, OrderMessageCreateModel(
             order_id=order_modify_body.order_id,
-            message=f"[Auto]已將提報類型由'{old_order_issue_db.name}'改為'{order_issue_db.name}'"), user_id)
+            message=f"[Auto]提報類型由'{old_order_issue_db.name}'改為'{new_order_issue_db.name}'"), user_id)
 
     if old_order_description != new_order_description:
         create_order_message(db, OrderMessageCreateModel(
             order_id=order_modify_body.order_id,
-            message=f"[Auto]已將問題簡述由'{old_order_db.description}'改為'{order_description}'"), user_id)
+            message=f"[Auto]問題簡述由'{old_order_db.description}'改為'{new_order_description}'"), user_id)
 
     if old_order_detail != new_order_detail:
         # set two list
@@ -102,20 +105,23 @@ def create_message_cause_order_info(db: Session, user_id, order_modify_body: Ord
         # find increased detail
         increased_list = list(new_detail_set - old_detail_set)
 
-        # create order detail message
+        # create decreased order detail message
         for decreased in decreased_list:
             create_order_message(db, OrderMessageCreateModel(
                 order_id=order_modify_body.order_id,
-                message=f"[自動]問題詳情已刪除'{decreased}'"), user_id)
+                message=f"[Auto]問題詳情已刪除'{decreased}'"), user_id)
 
+        # create increased order detail message
         for increased in increased_list:
             create_order_message(db, OrderMessageCreateModel(
                 order_id=order_modify_body.order_id,
-                message=f"[自動]問題詳情已新增'{increased}'"), user_id)
+                message=f"[Auto]問題詳情已新增'{increased}'"), user_id)
 
 
 def create_message_cause_status(db: Session, order_id: int, user_id: int, now_status: int, status: int):
     # change status from integer to mandarin
+    print("now_status", now_status)
+    print("status", status)
     name_status = {
         0: "未處理",
         1: "處理中",
@@ -127,13 +133,12 @@ def create_message_cause_status(db: Session, order_id: int, user_id: int, now_st
 
     # auto create message
     create_order_message(db, OrderMessageCreateModel(
-        order_id=order_id, message=f"[自動]已將狀態由'{named_status}'轉為'{named_now_status}'"), user_id)
+        order_id=order_id, message=f"[Auto]工單狀態由'{named_now_status}'轉為'{named_status}'"), user_id)
 
 
-def create_message_cause_engineer(db: Session, order_id: int, engineer_id: int, user_id):
+def create_message_cause_engineer(db: Session, order_id: int, now_engineer_id: int, engineer_id: int, user_id):
     # change engineer name from id to mandarin
-    now_engineer_db = db.query(User).join(
-        Order, Order.engineer_id == User.id).filter(Order.id == order_id).first()
+    now_engineer_db = db.query(User).filter(User.id == now_engineer_id).first()
     after_engineer_db = db.query(User).filter(User.id == engineer_id).first()
 
     # check order is appointed or not
@@ -148,6 +153,6 @@ def create_message_cause_engineer(db: Session, order_id: int, engineer_id: int, 
     create_order_message(db,
                          OrderMessageCreateModel(
                              order_id=order_id,
-                             message=f"[自動]已將工單負責工程師由'{now_engineer_name}'轉為'{after_engineer_name}'"
+                             message=f"[Auto]工單負責工程師由'{now_engineer_name}'轉為'{after_engineer_name}'"
                          ),
                          user_id)

@@ -25,7 +25,7 @@ from app.server.order.crud import (
     download_picture_from_folder,
     delete_picture_from_folder,
     get_a_order,
-    get_order_status,
+    get_order_status, get_order_engineer_id,
 )
 
 from app.models.schemas.order import (
@@ -195,7 +195,8 @@ def modify_order_status(order_id: int, status: int, background_tasks: Background
     modify_order_status_by_id(db, order_id, status)
 
     # create message after modify order status
-    create_message_cause_status(db, order_id, current_user.id, now_status, status)
+    if now_status != status:
+        create_message_cause_status(db, order_id, current_user.id, now_status, status)
 
     # send email when modify order
     # send_email("judhaha@gmail.com", background_tasks)
@@ -208,19 +209,23 @@ def modify_order_principal_engineer(order_id: int, engineer_id: int, background_
                                     db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 
-    # check client doesn't has authorize to modify principal engineer
+    # check client doesn't has authorized to modify principal engineer
     if current_user.level == AuthorityLevel.client.value:
         raise HTTPException(status_code=401, detail="client can't change principal engineer")
 
-    # check engineer doesn't has authorize to modify principal engineer to other engineer
+    # check engineer doesn't has authorized to modify principal engineer to other engineer
     if current_user.level == AuthorityLevel.engineer.value and current_user.id != engineer_id:
         raise HTTPException(status_code=401, detail="engineer can't change principal to other engineer")
+
+    # get now engineer id
+    now_engineer_id = get_order_engineer_id(db, order_id)
 
     # start modify order principal
     order_db = modify_order_principal_engineer_by_id(db, order_id, engineer_id)
 
     # create message after modify order engineer
-    create_message_cause_engineer(db, order_id, engineer_id, current_user.id)
+    if now_engineer_id != engineer_id:
+        create_message_cause_engineer(db, order_id, now_engineer_id, engineer_id, current_user.id)
 
     # send_email("judhaha@gmail.com", background_tasks)
 
