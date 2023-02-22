@@ -8,7 +8,6 @@ from starlette.background import BackgroundTasks
 
 from app.db.database import get_db
 from app.helper.authentication import authorize_user
-from app.models.schemas.order_message import OrderMessageCreateInModifyModel, OrderMessageCreateModel
 from app.server.authentication import AuthorityLevel
 from app.server.order.crud_file import (
     upload_picture_to_folder,
@@ -40,6 +39,7 @@ from app.models.schemas.order import (
     OrderMarkPost
 )
 # from app.server.send_email import send_email
+from app.server.order.output_pdf import get_report
 from app.server.order_message.crud import (
     create_message_cause_engineer,
     create_message_cause_status, create_message_cause_order_info
@@ -164,7 +164,7 @@ def modify_order(order_modify_body: OrderModifyModel,
                  db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 
-    # # check engineer doesn't has authorize to modify order
+    # # check engineer doesn't has authorized to modify order
     # if current_user.level == AuthorityLevel.engineer.value:
     #     raise HTTPException(status_code=401, detail="Unauthorized")
 
@@ -187,11 +187,11 @@ def modify_order_status(order_id: int, status: int, background_tasks: Background
     # check order status
     now_status = get_order_status(db, order_id)
 
-    if now_status == 0 and status == 1:
-        raise HTTPException(status_code=400, detail="Can't change status ")
+    if now_status == 0 and status == 1 and current_user.level != AuthorityLevel.pm.value:
+        raise HTTPException(status_code=400, detail="Only pm can change status")
 
     # check user authorize
-    check_modify_status_permission(db, current_user, now_status, status, order_id)
+    check_modify_status_permission(db, current_user.level, now_status, status, order_id, current_user.id)
 
     # start modify order
     modify_order_status_by_id(db, order_id, status)
@@ -211,11 +211,11 @@ def modify_order_principal_engineer(order_id: int, engineer_id: int, background_
                                     db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 
-    # check client doesn't has authorized to modify principal engineer
+    # check client doesn't have authorized to modify principal engineer
     if current_user.level == AuthorityLevel.client.value:
         raise HTTPException(status_code=401, detail="client can't change principal engineer")
 
-    # check engineer doesn't has authorized to modify principal engineer to other engineer
+    # check engineer doesn't have authorized to modify principal engineer to other engineer
     if current_user.level == AuthorityLevel.engineer.value and current_user.id != engineer_id:
         raise HTTPException(status_code=401, detail="engineer can't change principal to other engineer")
 
@@ -249,12 +249,8 @@ async def upload_picture(order_id: int, file: UploadFile,
 
     reporter_id = get_order_reporter(db, order_id)
     # check
-    if current_user.level in (
-            AuthorityLevel.pm.value,
-            AuthorityLevel.engineer.value
-    ) and current_user.id != reporter_id:
-            # and current_user.id != reporter_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    if current_user.level in (AuthorityLevel.pm.value, AuthorityLevel.engineer.value) and current_user.id != reporter_id:
+        raise HTTPException(status_code=401, detail="Only order reporter and client can upload picture")
 
     return await upload_picture_to_folder(db, order_id, current_user.id, file)
 
@@ -292,13 +288,15 @@ async def upload_picture(order_id: int, file: UploadFile,
     return await upload_picture_to_folder(db, order_id, current_user.id, file)
 
 
-# 上傳照片
+# 輸出pdf
 @router.get("/order/report")
-async def upload_picture(
-                         db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
+async def upload_picture(client_id: int, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 
-    return await get_report()
+    if current_user.level > 2 and current_user.id != client_id:
+        raise HTTPException(status_code=401, detail="only can output yourself report")
+
+    return await get_report(db, client_id)
 
 
 ##################################################
@@ -307,5 +305,7 @@ async def upload_picture(
 def test_get_all_orders(order_modify_body: OrderModifyModel,
                         db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     # create message after modify order engineer
+    current_user = authorize_user(Authorize, db)
+    print(current_user.id)
     create_message_cause_order_info(db, 9, order_modify_body)
     pass

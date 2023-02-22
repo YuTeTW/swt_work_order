@@ -8,7 +8,7 @@ class Order(Base):
     __tablename__ = "orders"
     id = Column(Integer, primary_key=True, index=True)
     client_id = Column(Integer, ForeignKey("users.id"), index=True)
-    engineer_id = Column(Integer, ForeignKey("users.id"), index=True, default=0)
+    engineer_id = Column(Integer, ForeignKey("users.id"), index=True, default=2)
     order_issue_id = Column(Integer, ForeignKey("order_issue.id"), index=True)
     reporter_id = Column(Integer, ForeignKey("users.id"), index=True)
     serial_number = Column(String, default="")

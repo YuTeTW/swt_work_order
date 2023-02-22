@@ -7,7 +7,7 @@ from app.models.domain.order_message import OrderMessage
 from app.models.domain.Error_handler import UnicornException
 from app.models.domain.user import User
 from app.models.schemas.order import OrderModifyModel
-from app.models.schemas.order_message import OrderMessageCreateModel
+from app.models.schemas.order_message import OrderMessageCreateModel, OrderMessageModifyModel
 
 
 def create_order_message(db: Session, order_message_create, user_id):
@@ -54,21 +54,23 @@ def delete_order_message_by_id(db: Session, issue_id: int):
     return "Order message deleted successfully"
 
 
-def modify_order_message_by_id(db: Session, order_message_modify):
+def modify_order_message_by_id(db: Session, order_message_modify: OrderMessageModifyModel):
     order_db = db.query(OrderMessage).filter(OrderMessage.id == order_message_modify.order_message_id).first()
     if not order_db:
         raise UnicornException(
             name=modify_order_message_by_id.__name__, description='order message not found', status_code=404
         )
-    order_db.update(
-        {
-            "name": order_message_modify.name,
-            "severity": order_message_modify.severity,
-            "time_hours": order_message_modify.time_hours,
-            "updated_at": datetime.now()
-        }
-    )
-    db.commit()
+    try:
+        order_db.user_id = order_message_modify.user_id
+        order_db.message = order_message_modify.message
+        order_db.updated_at = datetime.now()
+
+        db.commit()
+        db.refresh(order_db)
+    except Exception as e:
+        db.rollback()
+        print(str(e))
+        raise UnicornException(name=modify_order_message_by_id.__name__, description=str(e), status_code=500)
     return order_db
 
 
@@ -87,12 +89,12 @@ def create_message_cause_order_info(db: Session, user_id, order_modify_body: Ord
     if old_order_db.order_issue_id != order_modify_body.order_issue_id:
         create_order_message(db, OrderMessageCreateModel(
             order_id=order_modify_body.order_id,
-            message=f"[Auto]提報類型由'{old_order_issue_db.name}'改為'{new_order_issue_db.name}'"), user_id)
+            message=f"[Auto]提報類型由 ｢ {old_order_issue_db.name} ｣ 改為 ｢ {new_order_issue_db.name} ｣ "), user_id)
 
     if old_order_description != new_order_description:
         create_order_message(db, OrderMessageCreateModel(
             order_id=order_modify_body.order_id,
-            message=f"[Auto]問題簡述由'{old_order_db.description}'改為'{new_order_description}'"), user_id)
+            message=f"[Auto]問題簡述由 ｢ {old_order_db.description} ｣ 改為 ｢ {new_order_description} ｣"), user_id)
 
     if old_order_detail != new_order_detail:
         # set two list
@@ -109,19 +111,17 @@ def create_message_cause_order_info(db: Session, user_id, order_modify_body: Ord
         for decreased in decreased_list:
             create_order_message(db, OrderMessageCreateModel(
                 order_id=order_modify_body.order_id,
-                message=f"[Auto]問題詳情已刪除｢{decreased}｣"), user_id)
+                message=f"[Auto]問題詳情已刪除 ｢ {decreased} ｣ "), user_id)
 
         # create increased order detail message
         for increased in increased_list:
             create_order_message(db, OrderMessageCreateModel(
                 order_id=order_modify_body.order_id,
-                message=f"[Auto]問題詳情已新增｢{increased}｣"), user_id)
+                message=f"[Auto]問題詳情已新增 ｢ {increased} ｣ "), user_id)
 
 
 def create_message_cause_status(db: Session, order_id: int, user_id: int, now_status: int, status: int):
     # change status from integer to mandarin
-    print("now_status", now_status)
-    print("status", status)
     name_status = {
         0: "未處理",
         1: "處理中",
@@ -133,7 +133,7 @@ def create_message_cause_status(db: Session, order_id: int, user_id: int, now_st
 
     # auto create message
     create_order_message(db, OrderMessageCreateModel(
-        order_id=order_id, message=f"[Auto]工單狀態由｢{named_now_status}｣改為｢{named_status}｣"), user_id)
+        order_id=order_id, message=f"[Auto]工單狀態由 ｢ {named_now_status} ｣ 改為 ｢ {named_status} ｣ "), user_id)
 
 
 def create_message_cause_engineer(db: Session, order_id: int, now_engineer_id: int, engineer_id: int, user_id):
@@ -142,7 +142,7 @@ def create_message_cause_engineer(db: Session, order_id: int, now_engineer_id: i
     after_engineer_db = db.query(User).filter(User.id == engineer_id).first()
 
     # check order is appointed or not
-    if now_engineer_db:
+    if now_engineer_db and now_engineer_id != 2:  # id 2 is default engineer
         now_engineer_name = now_engineer_db.name
     else:
         now_engineer_name = "未指派"
@@ -153,6 +153,6 @@ def create_message_cause_engineer(db: Session, order_id: int, now_engineer_id: i
     create_order_message(db,
                          OrderMessageCreateModel(
                              order_id=order_id,
-                             message=f"[Auto]工單負責工程師由｢{now_engineer_name}｣改為｢{after_engineer_name}｣"
+                             message=f"[Auto]工單負責工程師由 ｢ {now_engineer_name} ｣ 改為 ｢ {after_engineer_name} ｣"
                          ),
                          user_id)

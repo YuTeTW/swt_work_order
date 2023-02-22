@@ -12,7 +12,7 @@ class UserBase(BaseModel):
 class UserInfoModel(UserBase):
     contact_email: str = ""
     telephone_number: str = ""
-    line_id: str
+    line_id: str = ""
     note: str = ""
 
 

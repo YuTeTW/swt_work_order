@@ -15,7 +15,6 @@ from app.server.order_message.crud import (
 
 from app.models.schemas.order_message import (
     OrderMessageCreateModel,
-    OrderMessageCreateViewModel,
     OrderMessageViewModel,
     OrderMessageModifyModel
 )

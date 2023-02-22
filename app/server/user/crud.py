@@ -18,17 +18,18 @@ def get_password_hash(password):
 
 
 def get_all_users(db: Session):
-    return db.query(User).all()
+
+    # user 1 is root and user 2 is default_engineer
+    return db.query(User).filter(User.id > 2).all()
 
 
 def get_user_by_id(db: Session, user_id: int):
-    user_db = db.query(User).filter(User.id == user_id).first()
-    return user_db
+    return db.query(User).filter(User.id == user_id).first()
 
 
 def get_user_by_level(db: Session, level: int):
-    user_db = db.query(User).filter(User.level == level).all()
-    return user_db
+    # user 2 is default_engineer
+    return db.query(User).filter(User.level == level, User.id != 2).all()
 
 
 def check_user_exist(db: Session, user_id: int):
@@ -122,7 +123,6 @@ def check_User_Exist(db: Session, user_id: int):
     return db_user
 
 
-
 def get_user_by_email(db: Session, email: str):
     return db.query(User).filter(User.email == email).first()
 
@@ -133,8 +133,8 @@ def get_user_by_name(db: Session, name: str):
 
 def change_user_level(db: Session, user_id: int, level: int):
     user_db = db.query(User).filter(User.id == user_id).first()
-    if level < 2 or level > 4:
-        raise UnicornException(name=change_user_level.__name__, description="權限 level 請輸入 2~4", status_code=400)
+    if level < AuthorityLevel.pm.value or level > AuthorityLevel.client.value:
+        raise UnicornException(name=change_user_level.__name__, description="權限 level 請輸入 1 ~ 3", status_code=400)
     db.begin()
     try:
         user_db.level = level
@@ -150,19 +150,54 @@ def change_user_level(db: Session, user_id: int, level: int):
 
 def delete_user_by_user_id(db: Session, user_id: int):
     try:
-
-        # delete all mark in user
-        from app.models.domain.user_mark_order import UserMarkOrder
-        db.query(UserMarkOrder).filter(UserMarkOrder.user_id == user_id).delete(synchronize_session=False)
-
         user_db = db.query(User).filter(User.id == user_id).first()
-        if user_db.level == 3:
-            db.query(OrderMessage).filter(OrderMessage.user_id == user_id).delete()
+
+        if user_db.level == AuthorityLevel.client.value:
+            # delete all message in order which client own
+            order_messages = (
+                db.query(OrderMessage)
+                .join(Order, Order.id == OrderMessage.order_id)
+                .filter(Order.client_id == user_id)
+                .all()
+            )
+            for order_message in order_messages:
+                db.delete(order_message)
+            db.commit()
+
+            # delete all mark in user
+            from app.models.domain.user_mark_order import UserMarkOrder
+            db.query(UserMarkOrder).filter(UserMarkOrder.user_id == user_id).delete()
+            db.commit()
+
+            # delete order
             db.query(Order).filter(Order.client_id == user_id).delete()
-        elif user_db.level == 2:
-            order_db = db.query(Order).filter(Order.client_id == user_id).first()
-            order_db.engineer_id = 0
-            order_db.updated_at = datetime.now()
+            db.commit()
+
+        elif user_db.level == AuthorityLevel.engineer.value or user_db.level == AuthorityLevel.pm.value:
+            # change engineer to default engineer
+            order_db = db.query(Order).filter(Order.engineer_id == user_id).first()
+            if order_db:
+                print(132749087190823749012)
+
+                order_db.engineer_id = 2  # change to default engineer_id = 2
+                order_db.updated_at = datetime.now()
+
+            # modify order message by delete user
+            from app.server.order_message.crud import modify_order_message_by_id
+            from app.models.schemas.order_message import OrderMessageModifyModel
+
+            order_message_db_list = db.query(OrderMessage, User).filter(
+                OrderMessage.user_id == user_id,
+                User.id == user_id).all()
+
+            for order_message, user in order_message_db_list:
+                modify_order_message_by_id(db, OrderMessageModifyModel(
+                    order_message_id=order_message.id,
+                    user_id=2,  # change to default engineer id = 2
+                    message=order_message.message + f"(留言者{user.name}已被刪除)")
+                    )
+            db.commit()
+
         db.delete(user_db)
         db.commit()
 
@@ -171,4 +206,3 @@ def delete_user_by_user_id(db: Session, user_id: int):
         print(str(e))
         raise UnicornException(name=delete_user_by_user_id.__name__, description=str(e), status_code=500)
     return "User deleted successfully"
-

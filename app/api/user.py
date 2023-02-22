@@ -78,7 +78,7 @@ def get_all_user(db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
 def get_users_by_level(level: int, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 
-    if current_user.level == AuthorityLevel.client.value or current_user.level >= level:
+    if current_user.level == AuthorityLevel.client.value or current_user.level > level:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     return get_user_by_level(db, level)
@@ -124,7 +124,7 @@ def patch_user_password(userPatch: UserPatchPasswordModel, db: Session = Depends
 # user id 修改 User is_enable (HRAccess)
 @router.patch("/user/is_enable", response_model=UserViewModel)
 def patch_user_is_enable(user_id: int, is_enable: bool, db: Session = Depends(get_db),
-                                  Authorize: AuthJWT = Depends()):
+                         Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 
     if current_user.level > AuthorityLevel.pm.value:
@@ -163,4 +163,13 @@ def create_root(user_data: UserCreateModel, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="root already exist")
     user_db = create_user(db, user_data)
 
+    # create a default user for principle engineer
+    create_user(db, UserCreateModel(
+        level=2,
+        email="default_engineer@fastwise.net",
+        password=user_data.password,
+        name="default_engineer",
+        status=1,
+        info={}
+    ))
     return user_db

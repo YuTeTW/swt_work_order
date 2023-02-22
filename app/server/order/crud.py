@@ -32,7 +32,7 @@ def get_order_reporter(db: Session, order_id: int):
 
 def create_order(db: Session, reporter_id, company_name, order_create: OrderCreateModel):
     if not db.query(User).filter(User.id == order_create.client_id).first():
-        raise UnicornException(name=create_order.__name__, description='client user not found', status_code=404)
+        raise HTTPException(status_code=404, detail='client user not found')
     try:
         order_create.detail = str(order_create.detail)
         db_order = Order(**order_create.dict(),
@@ -50,7 +50,6 @@ def create_order(db: Session, reporter_id, company_name, order_create: OrderCrea
     return db_order
 
 
-
 def get_order_view_model(each_order, engineer_name, issue_name, mark):
     engineer_name = engineer_name if engineer_name else "未指派"
     issue_name = issue_name if issue_name else "未選擇問題種類"
@@ -58,7 +57,8 @@ def get_order_view_model(each_order, engineer_name, issue_name, mark):
     try:
         dir_path = os.getcwd() + f"/db_image/order_pic_name_by_id/{each_order.id}"
         all_file_name = os.listdir(dir_path)
-    except:
+    except Exception as e:
+        print("file doesn't exist")
         all_file_name = []
     return OrderViewModel(
         id=each_order.id,
@@ -88,10 +88,10 @@ def get_all_order(db: Session, level, user_id, start_time, end_time):
         )
     )
     # engineer only get h
-    if level == 2:
+    if level == AuthorityLevel.engineer.value:
         order_db = order_db.filter(Order.engineer_id.in_([0, user_id]))
 
-    if level == 3:
+    if level == AuthorityLevel.client.value:
         order_db = order_db.filter(Order.client_id == user_id)
 
     if start_time:
@@ -99,7 +99,6 @@ def get_all_order(db: Session, level, user_id, start_time, end_time):
 
     if end_time:
         order_db = order_db.filter(Order.created_at < end_time)
-
 
     view_models = [get_order_view_model(each_order, engineer_name, issue_name, mark)
                    for each_order, engineer_name, issue_name, mark in order_db]
@@ -159,24 +158,6 @@ def get_a_order(db, order_id, user_id):
     return view_models[0]
 
 
-def get_a_order(db, order_id, user_id):
-    order_db = db.query(Order, User.name, OrderIssue.name, UserMarkOrder.mark).outerjoin(
-        User, Order.engineer_id == User.id
-    ).outerjoin(
-        OrderIssue, Order.order_issue_id == OrderIssue.id
-    ).outerjoin(
-        UserMarkOrder, and_(
-            UserMarkOrder.order_id == Order.id,
-            UserMarkOrder.user_id == user_id
-        )
-    )
-    order_db = order_db.filter(Order.id == order_id)
-    view_model = [get_order_view_model(each_order, engineer_name, issue_name, mark)
-                  for each_order, engineer_name, issue_name, mark in order_db]
-
-    return view_model[0]
-
-
 def check_order_status(db: Session, order_id_list):
     order_db = db.query(Order).filter(Order.id.in_(order_id_list), Order.status != 0).first()
     if order_db:
@@ -212,7 +193,7 @@ def delete_order_by_id(db: Session, order_id_list):
 def modify_order_by_id(db: Session, order_modify: OrderModifyModel):
     order_db = db.query(Order).filter(Order.id == order_modify.order_id).first()
     if not order_db:
-        raise UnicornException(name=modify_order_by_id.__name__, description='order not found', status_code=404)
+        raise HTTPException(status_code=404, detail='order not found')
     order_db.order_issue_id = order_modify.order_issue_id
     order_db.description = order_modify.description
     order_db.detail = str(order_modify.detail)
@@ -221,10 +202,10 @@ def modify_order_by_id(db: Session, order_modify: OrderModifyModel):
     return "Order modify successfully"
 
 
-def check_modify_status_permission(db: Session, current_user, now_status: int, status: int, order_id: int):
+def check_modify_status_permission(db: Session, level: int, now_status: int, status: int, order_id: int, user_id: int):
     # check client change status auth
-    if current_user.level == AuthorityLevel.client.value:  # client
-        if not db.query(Order).filter(Order.id == order_id, Order.client_id == current_user.id).first():
+    if level == AuthorityLevel.client.value:  # client
+        if not db.query(Order).filter(Order.id == order_id, Order.client_id == user_id).first():
             raise HTTPException(
                 status_code=401,
                 detail="order isn't yours"
@@ -241,7 +222,7 @@ def check_modify_status_permission(db: Session, current_user, now_status: int, s
             )
 
     # check engineer change status auth
-    elif current_user.level == AuthorityLevel.engineer.value:  # engineer
+    elif level == AuthorityLevel.engineer.value:  # engineer
         if status in [3, 0]:
             raise HTTPException(
                 status_code=401,
@@ -249,7 +230,7 @@ def check_modify_status_permission(db: Session, current_user, now_status: int, s
             )
 
     # check pm change status auth
-    elif current_user.level == AuthorityLevel.pm.value:  # pm
+    elif level == AuthorityLevel.pm.value:  # pm
         if status == 3:
             raise HTTPException(
                 status_code=401,
@@ -259,12 +240,10 @@ def check_modify_status_permission(db: Session, current_user, now_status: int, s
 
 def modify_order_status_by_id(db: Session, order_id: int, status: int):
     order_db = db.query(Order).filter(Order.id == order_id).first()
+
     if not order_db:
-        raise UnicornException(
-            name=modify_order_principal_engineer_by_id.__name__,
-            description='order not found',
-            status_code=404
-        )
+        raise HTTPException(status_code=404, detail="order not found")
+
     # status
     order_db.status = status
     order_db.updated = datetime.now()
@@ -274,11 +253,9 @@ def modify_order_status_by_id(db: Session, order_id: int, status: int):
 
 def modify_order_principal_engineer_by_id(db: Session, order_id: int, engineer_id: int):
     order_db = db.query(Order).filter(Order.id == order_id, Order.id == order_id).first()
+
     if not order_db:
-        raise UnicornException(
-            name=modify_order_principal_engineer_by_id.__name__,
-            description='order not found',
-            status_code=404)
+        raise HTTPException(status_code=404, detail="order not found")
 
     status = 1 if order_db.status == 0 else order_db.status
     order_db.engineer_id = engineer_id
@@ -288,29 +265,23 @@ def modify_order_principal_engineer_by_id(db: Session, order_id: int, engineer_i
     return order_db
 
 
-def order_mark_by_user(db: Session, user_id, order_mark: OrderMarkPost):
-
+def order_mark_by_user(db: Session, user_id: int, order_mark: OrderMarkPost):
     # Check if the user exists
     user = db.query(User).filter(User.id == user_id).first()
+
     if not user:
-        raise UnicornException(
-            name=order_mark_by_user.__name__,
-            description='User does not exist',
-            status_code=404)
+        raise HTTPException(status_code=404, detail="User does not exist")
 
     # Check if the order exists
     order = db.query(Order).filter(Order.id == order_mark.order_id).first()
     if not order:
-        raise UnicornException(
-            name=order_mark_by_user.__name__,
-            description='Order does not exist',
-            status_code=404)
+        raise HTTPException(status_code=404, detail="Order does not exist")
 
     # Check if the user has marked the order
     mark_db = db.query(UserMarkOrder).filter(
-            UserMarkOrder.user_id == user_id,
-            UserMarkOrder.order_id == order_mark.order_id
-        ).first()
+        UserMarkOrder.user_id == user_id,
+        UserMarkOrder.order_id == order_mark.order_id
+    ).first()
 
     try:
         # If the mark is empty, delete the mark from the database
@@ -333,15 +304,6 @@ def order_mark_by_user(db: Session, user_id, order_mark: OrderMarkPost):
     return "Done"
 
 
-
-
-
-
-
 ####################################################
-
-
-
-
-def test_get_all_order(db: Session, level, user_id, start_time, end_time):
+def test_get_all_order():
     pass

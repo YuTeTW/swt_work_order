@@ -48,5 +48,5 @@ class OrderMessageViewModel(OrderBase):
 
 class OrderMessageModifyModel(OrderBase):
     order_message_id: int
-    report_name: str
-    detail: str
+    user_id: int
+    message: str
