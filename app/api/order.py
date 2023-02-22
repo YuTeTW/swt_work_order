@@ -10,6 +10,11 @@ from app.db.database import get_db
 from app.helper.authentication import authorize_user
 from app.models.schemas.order_message import OrderMessageCreateInModifyModel, OrderMessageCreateModel
 from app.server.authentication import AuthorityLevel
+from app.server.order.crud_file import (
+    upload_picture_to_folder,
+    download_picture_from_folder,
+    delete_picture_from_folder,
+)
 from app.server.order.crud import (
     create_order,
     get_all_order,
@@ -21,11 +26,8 @@ from app.server.order.crud import (
     modify_order_principal_engineer_by_id,
     order_mark_by_user,
     check_modify_status_permission,
-    upload_picture_to_folder,
-    download_picture_from_folder,
-    delete_picture_from_folder,
     get_a_order,
-    get_order_status, get_order_engineer_id,
+    get_order_status, get_order_engineer_id, get_order_reporter,
 )
 
 from app.models.schemas.order import (
@@ -245,8 +247,13 @@ async def upload_picture(order_id: int, file: UploadFile,
                          db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 
+    reporter_id = get_order_reporter(db, order_id)
     # check
-    if current_user.level in (AuthorityLevel.pm.value, AuthorityLevel.engineer.value):
+    if current_user.level in (
+            AuthorityLevel.pm.value,
+            AuthorityLevel.engineer.value
+    ) and current_user.id != reporter_id:
+            # and current_user.id != reporter_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     return await upload_picture_to_folder(db, order_id, current_user.id, file)
