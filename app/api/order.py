@@ -249,16 +249,16 @@ async def upload_picture(order_id: int, file: UploadFile,
     if current_user.level in (AuthorityLevel.pm.value, AuthorityLevel.engineer.value):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-    return await upload_picture_to_folder(db, order_id, file)
+    return await upload_picture_to_folder(db, order_id, current_user.id, file)
 
 
 # 下載照片
 @router.get("/order/picture")
-async def download_picture(order_id: int,
+async def download_picture(order_id: int, file_name: str,
                            db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     authorize_user(Authorize, db)
 
-    return download_picture_from_folder(order_id)
+    return download_picture_from_folder(order_id, file_name)
 
 
 # 刪除照片
@@ -276,11 +276,13 @@ async def upload_picture(order_id: int, file: UploadFile,
                          db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 
+    order = get_a_order_by_id()
     # check
-    if current_user.level in (AuthorityLevel.pm.value, AuthorityLevel.engineer.value):
+    if current_user.level in (AuthorityLevel.pm.value, AuthorityLevel.engineer.value) and \
+            current_user.id != order.reporter_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-    return await upload_picture_to_folder(db, order_id, file)
+    return await upload_picture_to_folder(db, order_id, current_user.id, file)
 
 
 # 上傳照片
