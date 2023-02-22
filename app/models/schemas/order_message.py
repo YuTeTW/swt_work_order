@@ -12,6 +12,7 @@ class OrderMessageCreateModel(OrderBase):
     order_id: int
     message: str
 
+
     class Config:
         schema_extra = {
             "example": {
@@ -19,6 +20,16 @@ class OrderMessageCreateModel(OrderBase):
                 "message": "修改第一次",
             }
         }
+
+
+class OrderMessageCreateInModifyModel():
+    pass
+    # order_id =
+    # message
+    #
+    # def __int__(self, order_id, message):
+    #     self.order_id = order_id
+    #     self.message = message
 
 
 class OrderMessageCreateViewModel(OrderBase):

@@ -10,13 +10,15 @@ class OrderMessage(Base):
     order_id = Column(Integer, ForeignKey("orders.id"), index=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
     message = Column(String)
-    created_at = Column(DateTime, default=datetime.now())
-    updated_at = Column(DateTime, default=datetime.now())
+    created_at = Column(DateTime)
+    updated_at = Column(DateTime)
 
     def __init__(self, order_id, user_id, message, **kwargs):
         self.order_id = order_id
         self.user_id = user_id
         self.message = message
+        self.created_at = datetime.now()
+        self.updated_at = datetime.now()
 
 
     def __repr__(self):

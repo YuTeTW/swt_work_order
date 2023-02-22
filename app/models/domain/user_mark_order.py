@@ -12,8 +12,8 @@ class UserMarkOrder(Base):
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
     order_id = Column(Integer, ForeignKey("orders.id"), index=True)
     mark = Column(Boolean, default=False)
-    created_at = Column(DateTime, index=True, default=datetime.now())
-    updated_at = Column(DateTime, default=datetime.now())
+    created_at = Column(DateTime, index=True)
+    updated_at = Column(DateTime)
 
     # user = relationship("User", back_populates="marked_orders")
     # order = relationship("Order", back_populates="marked_by_users")
@@ -23,6 +23,8 @@ class UserMarkOrder(Base):
         self.user_id = user_id
         self.order_id = order_id
         self.mark = mark
+        self.created_at = datetime.now()
+        self.updated_at = datetime.now()
 
 
     def __repr__(self):

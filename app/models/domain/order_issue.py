@@ -10,13 +10,15 @@ class OrderIssue(Base):
     name = Column(String, unique=True)
     severity = Column(Integer)
     time_hours = Column(Integer)
-    created_at = Column(DateTime, default=datetime.now())
-    updated_at = Column(DateTime, default=datetime.now())
+    created_at = Column(DateTime)
+    updated_at = Column(DateTime)
 
     def __init__(self, name, severity, time_hours, **kwargs):
         self.name = name
         self.severity = severity
         self.time_hours = time_hours
+        self.created_at = datetime.now()
+        self.updated_at = datetime.now()
 
 
     def __repr__(self):

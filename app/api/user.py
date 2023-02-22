@@ -90,10 +90,21 @@ def patch_user_info(user_patch: UserPatchInfoModel,
                     db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 
-    # check
-    if current_user.level > AuthorityLevel.pm.value or user_patch.level == AuthorityLevel.root.value:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    # check pm can't modify other pm
+    patch_user_db = get_user_by_id(db, user_patch.user_id)
+    if current_user.level == AuthorityLevel.pm.value and \
+            patch_user_db.level == AuthorityLevel.pm.value and \
+            current_user.id != user_patch.user_id:
+        raise HTTPException(status_code=401, detail="pm can't modify other pm")
 
+    # check client and engineer only can change its
+    if current_user.level == AuthorityLevel.engineer.value or current_user.level == AuthorityLevel.client.value:
+        if current_user.id != user_patch.user_id:
+            raise HTTPException(status_code=401, detail="engineer and client only can modify himself")
+
+    # can't modify root
+    if user_patch.level == AuthorityLevel.root.value:
+        raise HTTPException(status_code=401, detail="Can't modify root")
 
     return modify_user(db, user_patch)
 
@@ -115,9 +126,11 @@ def patch_user_password(userPatch: UserPatchPasswordModel, db: Session = Depends
 def patch_user_is_enable(user_id: int, is_enable: bool, db: Session = Depends(get_db),
                                   Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
+
     if current_user.level > AuthorityLevel.pm.value:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    if user_id < AuthorityLevel.engineer.value:
+
+    if current_user.level < AuthorityLevel.engineer.value:
         raise HTTPException(status_code=401, detail="Unauthorized")
     return set_user_enable(db, user_id, is_enable)
 

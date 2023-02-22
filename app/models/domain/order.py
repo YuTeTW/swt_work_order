@@ -18,8 +18,9 @@ class Order(Base):
     description = Column(String, default=None)
     detail = Column(String, default=None)  # 因sqlite不能用Array存，所以先轉str，再轉list輸出
     file_name = Column(String, default=str([]))  # 因sqlite不能用Array存，所以先轉str，再轉list輸出
-    created_at = Column(DateTime, index=True, default=datetime.now())
-    updated_at = Column(DateTime, default=datetime.now())
+    created_at = Column(DateTime, index=True)
+    updated_at = Column(DateTime)
+
 
     def __init__(self, client_id, company_name, reporter_id,
                  order_issue_id, description, detail, **kwargs):
@@ -29,6 +30,8 @@ class Order(Base):
         self.company_name = company_name
         self.description = description
         self.detail = detail
+        self.created_at = datetime.now()
+        self.updated_at = datetime.now()
 
     def __repr__(self):
         return 'id={},client_id={}, engineer_id={}, order_issue_id={},serial_number={},company_name={},status={},' \

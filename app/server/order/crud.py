@@ -22,6 +22,16 @@ from app.server.authentication import AuthorityLevel
 # jpype.startJVM()
 
 
+def get_order_engineer_id(db: Session, order_id: int):
+    order_db = db.query(Order).filter(Order.id == order_id).first()
+    return order_db.engineer_id
+
+
+def get_order_status(db: Session, order_id: int):
+    order_db = db.query(Order).filter(Order.id == order_id).first()
+    return order_db.status
+
+
 def create_order(db: Session, reporter_id, company_name, order_create: OrderCreateModel):
     if not db.query(User).filter(User.id == order_create.client_id).first():
         raise UnicornException(name=create_order.__name__, description='client user not found', status_code=404)
@@ -74,10 +84,9 @@ def get_all_order(db: Session, level, user_id, start_time, end_time):
             UserMarkOrder.user_id == user_id
         )
     )
-
     # engineer only get h
     if level == 2:
-        order_db = order_db.filter(Order.engineer_id.in_([user_id, 0]))
+        order_db = order_db.filter(Order.engineer_id.in_([0, user_id]))
 
     if level == 3:
         order_db = order_db.filter(Order.client_id == user_id)
@@ -167,7 +176,6 @@ def get_a_order(db, order_id, user_id):
 
 def check_order_status(db: Session, order_id_list):
     order_db = db.query(Order).filter(Order.id.in_(order_id_list), Order.status != 0).first()
-    print(order_db)
     if order_db:
         status = order_db.status
     else:
@@ -212,7 +220,6 @@ def modify_order_by_id(db: Session, order_modify: OrderModifyModel):
 
 def check_modify_status_permission(db: Session, current_user, now_status: int, status: int, order_id: int):
     # check client change status auth
-    print(now_status)
     if current_user.level == AuthorityLevel.client.value:  # client
         if not db.query(Order).filter(Order.id == order_id, Order.client_id == current_user.id).first():
             raise HTTPException(
@@ -270,9 +277,9 @@ def modify_order_principal_engineer_by_id(db: Session, order_id: int, engineer_i
             description='order not found',
             status_code=404)
 
-    # status = 1 if order_db.status == 0 else order_db.status
+    status = 1 if order_db.status == 0 else order_db.status
     order_db.engineer_id = engineer_id
-    # order_db.status = status
+    order_db.status = status
     order_db.updated = datetime.now()
     db.commit()
     return order_db

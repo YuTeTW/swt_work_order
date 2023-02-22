@@ -8,6 +8,7 @@ from starlette.background import BackgroundTasks
 
 from app.db.database import get_db
 from app.helper.authentication import authorize_user
+from app.models.schemas.order_message import OrderMessageCreateInModifyModel, OrderMessageCreateModel
 from app.server.authentication import AuthorityLevel
 from app.server.order.crud import (
     create_order,
@@ -24,7 +25,7 @@ from app.server.order.crud import (
     download_picture_from_folder,
     delete_picture_from_folder,
     get_a_order,
-    get_report
+    get_order_status, get_order_engineer_id,
 )
 
 from app.models.schemas.order import (
@@ -37,6 +38,10 @@ from app.models.schemas.order import (
     OrderMarkPost
 )
 # from app.server.send_email import send_email
+from app.server.order_message.crud import (
+    create_message_cause_engineer,
+    create_message_cause_status, create_message_cause_order_info
+)
 from app.server.user.crud import (
     get_user_by_id
 )
@@ -157,13 +162,16 @@ def modify_order(order_modify_body: OrderModifyModel,
                  db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 
-    # check engineer doesn't has authorize to modify order
-    if current_user.level == AuthorityLevel.engineer.value:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    # # check engineer doesn't has authorize to modify order
+    # if current_user.level == AuthorityLevel.engineer.value:
+    #     raise HTTPException(status_code=401, detail="Unauthorized")
 
     # check client can't modify order when order is in progress
     if current_user.level == AuthorityLevel.client.value and check_order_status(db, [order_modify_body.order_id]):
         raise HTTPException(status_code=400, detail="One of orders is already in progress")
+
+    # create message after modify order engineer
+    create_message_cause_order_info(db, current_user.id, order_modify_body)
 
     return modify_order_by_id(db, order_modify_body)
 
@@ -175,14 +183,20 @@ def modify_order_status(order_id: int, status: int, background_tasks: Background
     current_user = authorize_user(Authorize, db)
 
     # check order status
-    now_status = check_order_status(db, [order_id])
+    now_status = get_order_status(db, order_id)
+
+    if now_status == 0 and status == 1:
+        raise HTTPException(status_code=400, detail="Can't change status ")
 
     # check user authorize
     check_modify_status_permission(db, current_user, now_status, status, order_id)
 
     # start modify order
-    print("change: ", status)
     modify_order_status_by_id(db, order_id, status)
+
+    # create message after modify order status
+    if now_status != status:
+        create_message_cause_status(db, order_id, current_user.id, now_status, status)
 
     # send email when modify order
     # send_email("judhaha@gmail.com", background_tasks)
@@ -195,16 +209,24 @@ def modify_order_principal_engineer(order_id: int, engineer_id: int, background_
                                     db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 
-    # check client doesn't has authorize to modify principal engineer
+    # check client doesn't has authorized to modify principal engineer
     if current_user.level == AuthorityLevel.client.value:
         raise HTTPException(status_code=401, detail="client can't change principal engineer")
 
-    # check engineer doesn't has authorize to modify principal engineer to other engineer
+    # check engineer doesn't has authorized to modify principal engineer to other engineer
     if current_user.level == AuthorityLevel.engineer.value and current_user.id != engineer_id:
         raise HTTPException(status_code=401, detail="engineer can't change principal to other engineer")
 
+    # get now engineer id
+    now_engineer_id = get_order_engineer_id(db, order_id)
+
     # start modify order principal
     order_db = modify_order_principal_engineer_by_id(db, order_id, engineer_id)
+
+    # create message after modify order engineer
+    if now_engineer_id != engineer_id:
+        create_message_cause_engineer(db, order_id, now_engineer_id, engineer_id, current_user.id)
+
     # send_email("judhaha@gmail.com", background_tasks)
 
     return order_db
@@ -261,32 +283,20 @@ async def upload_picture(order_id: int, file: UploadFile,
     return await upload_picture_to_folder(db, order_id, file)
 
 
-# 下載pdf
+# 上傳照片
 @router.get("/order/report")
 async def upload_picture(
                          db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 
-    return await get_report(db, current_user.id)
+    return await get_report()
 
 
 ##################################################
 # @router.get("/test", response_model=List[dict])
 @router.get("/test")
-def test_get_all_orders(start_time: Optional[str] = None, end_time: Optional[str] = None,
+def test_get_all_orders(order_modify_body: OrderModifyModel,
                         db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
-    current_user = authorize_user(Authorize, db)
-    try:
-
-        if start_time is not None:
-            start_time = datetime.strptime(start_time, "%Y-%m-%d")
-        if end_time is not None:
-            end_time = datetime.strptime(end_time, "%Y-%m-%d")
-        if start_time is not None and end_time is not None and start_time > end_time:
-            start_time, end_time = end_time, start_time
-    except Exception as e:
-        print(e)
-        raise HTTPException(status_code=422, detail="""start_time or end_time type fail (example: 2023-01-25) """)
-
-    return test_get_all_order(db, level=current_user.level, user_id=current_user.id,
-                              start_time=start_time, end_time=end_time)
+    # create message after modify order engineer
+    create_message_cause_order_info(db, 9, order_modify_body)
+    pass
