@@ -384,12 +384,10 @@ def delete_picture_from_folder(db: Session, order_id, file_name):
     return "Image deleted successfully"
 
 
-async def get_report(db, user_id):
-    import openpyxl
-    from asposecells.api import Workbook, FileFormatType, PdfSaveOptions
-    from openpyxl.styles.alignment import Alignment
-    from openpyxl.styles.borders import Border, Side
 
+
+####################################################
+def get_order_db(db, user_id):
     # Create aliases for joined tables
     engineer_alias = aliased(User)
     reporter_alias = aliased(User)
@@ -411,18 +409,12 @@ async def get_report(db, user_id):
             UserMarkOrder.user_id == user_id
         )
     )
+    return order_db
 
 
-    # Create directory for report files if it doesn't exist
-    report_dir = os.path.join(os.getcwd(), "db_image/order/report/")
-    os.makedirs(report_dir, exist_ok=True)
-
-    # Load the Excel workbook
-    workbook = openpyxl.load_workbook('order.xlsx')
-
-    # Select the worksheet to edit
-    worksheet = workbook['EFAY - 2023 JAN']
-
+def edit_excel(worksheet, order_db):
+    from openpyxl.styles.alignment import Alignment
+    from openpyxl.styles.borders import Border, Side
     # Create a list of weekday names to use in the report
     week_name = ["一", "二", "三", "四", "五", "六", "日"]
 
@@ -446,7 +438,7 @@ async def get_report(db, user_id):
             end_row = idx - 1
 
             # Merge cells and write the date
-            # column B
+            # 日期
             worksheet.merge_cells(
                 start_row=start_row,
                 start_column=2,
@@ -455,7 +447,7 @@ async def get_report(db, user_id):
             )
 
             # Merge cells and write the day of the week
-            # column C
+            # 星期
             worksheet.merge_cells(
                 start_row=start_row,
                 start_column=3,
@@ -477,12 +469,11 @@ async def get_report(db, user_id):
             worksheet[f"B{start_row}"].border = thin_border
             worksheet[f"C{start_row}"].border = thin_border
 
-
         # Check if this is the last row
         if idx == len(list(order_db)) + 3:
             end_row = idx
 
-            # column B
+            # 日期
             worksheet.merge_cells(
                 start_row=start_row,
                 start_column=2,
@@ -490,7 +481,7 @@ async def get_report(db, user_id):
                 end_column=2
             )
 
-            # column C
+            # 星期
             worksheet.merge_cells(
                 start_row=start_row,
                 start_column=3,
@@ -505,27 +496,53 @@ async def get_report(db, user_id):
         worksheet.cell(row=start_row, column=2, value=prev_date)
         worksheet.cell(row=start_row, column=3, value=weekday_name)
 
-
-
+        # 提報人
         worksheet[f"D{idx}"] = reporter_name
         worksheet[f"D{idx}"].alignment = align
         worksheet[f"D{idx}"].border = thin_border
 
+        # 項目
         worksheet[f"E{idx}"] = issue_name
         worksheet[f"E{idx}"].alignment = align
         worksheet[f"E{idx}"].border = thin_border
 
+        # 處理方式
         worksheet[f"F{idx}"] = "1"
         worksheet[f"F{idx}"].alignment = align
         worksheet[f"F{idx}"].border = thin_border
 
-        worksheet[f"G{idx}"] = order.status
+        order_status_name = {
+            0: "未處理",
+            1: "處理中",
+            2: "已處理",
+            3: "結單",
+
+        }
+        # 程序
+        worksheet[f"G{idx}"] = order_status_name[order.status]
         worksheet[f"G{idx}"].alignment = align
         worksheet[f"G{idx}"].border = thin_border
 
-        worksheet[f"H{idx}"] = order.status
-        worksheet[f"H{idx}"].alignment = align
-        worksheet[f"H{idx}"].border = thin_border
+
+async def get_report(db, user_id):
+    import openpyxl
+    from asposecells.api import Workbook, FileFormatType, PdfSaveOptions
+
+
+    order_db = get_order_db(db, user_id)
+
+    # Create directory for report files if it doesn't exist
+    report_dir = os.path.join(os.getcwd(), "db_image/order/report/")
+    os.makedirs(report_dir, exist_ok=True)
+
+    # Load the Excel workbook
+    workbook = openpyxl.load_workbook('order.xlsx')
+
+    # Select the worksheet to edit
+    worksheet = workbook['EFAY - 2023 JAN']
+
+    # write data into excel
+    edit_excel(worksheet, order_db)
 
 
     # Save the modified workbook as an Excel file

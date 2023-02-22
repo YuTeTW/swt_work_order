@@ -1,0 +1,36 @@
+version: '3.6'   # Docker Engine release 18.02.0+
+
+volumes:
+  swt_erp:
+
+services:
+  db:
+    image: postgres:15.0-alpine
+    volumes:
+      - swt_erp:/var/lib/postgresql/data/
+      - ./db_image:/backend/db_image
+    environment:
+      - POSTGRES_USER=dave
+      - POSTGRES_PASSWORD=dave
+      - POSTGRES_DB=first
+    ports:
+      - 5435:5432
+
+  backend:
+    image: uuderder/swt_erp_be
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8080
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - 192.168.45.80:8080:8080
+    depends_on:
+      - db
+#  backend_2:
+#    image: uuderder/fasteyes_backend
+#    command: uvicorn app.faceRecognition:app --host 0.0.0.0 --port 8050
+#    environment:
+#      TZ: Asia/Shanghai
+#    ports:
+#      - 192.168.45.80:8050:8050
+#    depends_on:
+#      - backend
