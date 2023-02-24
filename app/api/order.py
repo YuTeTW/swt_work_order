@@ -26,7 +26,7 @@ from app.server.order.crud import (
     order_mark_by_user,
     check_modify_status_permission,
     get_a_order,
-    get_order_status, get_order_engineer_id, get_order_reporter,
+    get_order_status, get_order_engineer_id, get_order_reporter, test_get_all_order,
 )
 
 from app.models.schemas.order import (
@@ -42,7 +42,7 @@ from app.models.schemas.order import (
 from app.server.order.output_pdf import get_report
 from app.server.order_message.crud import (
     create_message_cause_engineer,
-    create_message_cause_status, create_message_cause_order_info
+    create_message_cause_status, create_message_cause_order_info, create_message_cause_file
 )
 from app.server.user.crud import (
     get_user_by_id
@@ -73,7 +73,8 @@ async def create_a_order(order_create: OrderCreateModel, background_tasks: Backg
 
 
 # 取得所有工單
-@router.get("/order/all", response_model=List[OrderViewModel])
+# @router.get("/order/all", response_model=List[OrderViewModel])
+@router.get("/order/all")
 def get_all_orders(start_time: Optional[str] = None, end_time: Optional[str] = None,
                    db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
@@ -188,7 +189,7 @@ def modify_order_status(order_id: int, status: int, background_tasks: Background
     now_status = get_order_status(db, order_id)
 
     if now_status == 0 and status == 1 and current_user.level != AuthorityLevel.pm.value:
-        raise HTTPException(status_code=400, detail="Only pm can change status")
+        raise HTTPException(status_code=400, detail="Only pm can change status from not appoint to working")
 
     # check user authorize
     check_modify_status_permission(db, current_user.level, now_status, status, order_id, current_user.id)
@@ -237,7 +238,9 @@ def modify_order_principal_engineer(order_id: int, engineer_id: int, background_
 # 修改工單記號
 @router.patch("/order/mark")
 def order_mark(order_mark_body: OrderMarkPost, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
+
     current_user = authorize_user(Authorize, db)
+
     return order_mark_by_user(db, current_user.id, order_mark_body)
 
 
@@ -251,6 +254,8 @@ async def upload_picture(order_id: int, file: UploadFile,
     # check
     if current_user.level in (AuthorityLevel.pm.value, AuthorityLevel.engineer.value) and current_user.id != reporter_id:
         raise HTTPException(status_code=401, detail="Only order reporter and client can upload picture")
+
+    create_message_cause_file(db, order_id, current_user.id, file.filename, "upload")
 
     return await upload_picture_to_folder(db, order_id, current_user.id, file)
 
@@ -268,24 +273,13 @@ async def download_picture(order_id: int, file_name: str,
 @router.delete("/order/picture")
 async def delete_picture(order_id: int, file_name: str,
                          db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
-    authorize_user(Authorize, db)
-
-    return delete_picture_from_folder(db, order_id, file_name)
-
-
-# 上傳照片
-@router.post("/order/picture")
-async def upload_picture(order_id: int, file: UploadFile,
-                         db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 
-    order = get_a_order_by_id()
-    # check
-    if current_user.level in (AuthorityLevel.pm.value, AuthorityLevel.engineer.value) and \
-            current_user.id != order.reporter_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    delete_response = delete_picture_from_folder(db, order_id, file_name)
 
-    return await upload_picture_to_folder(db, order_id, current_user.id, file)
+    create_message_cause_file(db, order_id, current_user.id, file_name, "delete")
+
+    return delete_response
 
 
 # 輸出pdf
@@ -306,6 +300,7 @@ def test_get_all_orders(order_modify_body: OrderModifyModel,
                         db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     # create message after modify order engineer
     current_user = authorize_user(Authorize, db)
-    print(current_user.id)
-    create_message_cause_order_info(db, 9, order_modify_body)
+    # print(current_user.id)
+    # create_message_cause_order_info(db, 9, order_modify_body)
+    test_get_all_order()
     pass

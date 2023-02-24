@@ -157,7 +157,7 @@ def delete_a_user(user_id: int,
 #######################################################################################################################
 # 創建 root
 @router.post("/user/root", response_model=UserViewModel)
-def create_root(user_data: UserCreateModel, db: Session = Depends(get_db)):
+def create_root_and_default_engineer(user_data: UserCreateModel, db: Session = Depends(get_db)):
     check_root_exist(db)
     if check_root_exist(db):
         raise HTTPException(status_code=400, detail="root already exist")
@@ -165,7 +165,7 @@ def create_root(user_data: UserCreateModel, db: Session = Depends(get_db)):
 
     # create a default user for principle engineer
     create_user(db, UserCreateModel(
-        level=2,
+        level=-1,
         email="default_engineer@fastwise.net",
         password=user_data.password,
         name="default_engineer",

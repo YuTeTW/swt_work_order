@@ -20,7 +20,7 @@ def get_password_hash(password):
 def get_all_users(db: Session):
 
     # user 1 is root and user 2 is default_engineer
-    return db.query(User).filter(User.id > 2).all()
+    return db.query(User).filter(User.level != 0, User.level != -1).all()
 
 
 def get_user_by_id(db: Session, user_id: int):

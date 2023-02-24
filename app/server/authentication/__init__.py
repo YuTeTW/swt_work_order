@@ -29,10 +29,10 @@ credentials_exception = HTTPException(
 
 
 class AuthorityLevel(Enum):
-    root = 0
-    pm = 1
-    engineer = 2
-    client = 3
+    root: int = 0
+    pm: int = 1
+    engineer: int = 2
+    client: int = 3
 
 
 class Settings(BaseModel):

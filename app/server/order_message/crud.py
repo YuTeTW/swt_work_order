@@ -1,3 +1,4 @@
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime
 
@@ -10,11 +11,14 @@ from app.models.schemas.order import OrderModifyModel
 from app.models.schemas.order_message import OrderMessageCreateModel, OrderMessageModifyModel
 
 
-def create_order_message(db: Session, order_message_create, user_id):
-    if not db.query(Order).filter(Order.id == order_message_create.order_id).first():
-        raise UnicornException(
-            name=modify_order_message_by_id.__name__, description="order doesn't exist", status_code=404
-        )
+def create_order_message(db: Session, order_message_create, user_id: int):
+    order_db = db.query(Order).filter(Order.id == order_message_create.order_id).first()
+    if not order_db:
+        raise HTTPException(status_code=404, detail="order doesn't exist")
+
+    if order_db.status == 3:
+        raise HTTPException(status_code=400, detail="Can't create message when order close")
+
     try:
         db_user = OrderMessage(**order_message_create.dict(), user_id=user_id)
         db.add(db_user)
@@ -74,7 +78,7 @@ def modify_order_message_by_id(db: Session, order_message_modify: OrderMessageMo
     return order_db
 
 
-def create_message_cause_order_info(db: Session, user_id, order_modify_body: OrderModifyModel):
+def create_message_cause_order_info(db: Session, user_id: int, order_modify_body: OrderModifyModel):
     old_order_db = db.query(Order).filter(Order.id == order_modify_body.order_id).first()
 
     old_order_issue_db = db.query(OrderIssue).filter(OrderIssue.id == old_order_db.order_issue_id).first()
@@ -89,12 +93,12 @@ def create_message_cause_order_info(db: Session, user_id, order_modify_body: Ord
     if old_order_db.order_issue_id != order_modify_body.order_issue_id:
         create_order_message(db, OrderMessageCreateModel(
             order_id=order_modify_body.order_id,
-            message=f"[Auto]提報類型由 ｢ {old_order_issue_db.name} ｣ 改為 ｢ {new_order_issue_db.name} ｣ "), user_id)
+            message=f"[Auto] 提報類型由 ｢ {old_order_issue_db.name} ｣ 改為 ｢ {new_order_issue_db.name} ｣ "), user_id)
 
     if old_order_description != new_order_description:
         create_order_message(db, OrderMessageCreateModel(
             order_id=order_modify_body.order_id,
-            message=f"[Auto]問題簡述由 ｢ {old_order_db.description} ｣ 改為 ｢ {new_order_description} ｣"), user_id)
+            message=f"[Auto] 問題簡述由 ｢ {old_order_db.description} ｣ 改為 ｢ {new_order_description} ｣"), user_id)
 
     if old_order_detail != new_order_detail:
         # set two list
@@ -111,13 +115,13 @@ def create_message_cause_order_info(db: Session, user_id, order_modify_body: Ord
         for decreased in decreased_list:
             create_order_message(db, OrderMessageCreateModel(
                 order_id=order_modify_body.order_id,
-                message=f"[Auto]問題詳情已刪除 ｢ {decreased} ｣ "), user_id)
+                message=f"[Auto] 問題詳情已刪除 ｢ {decreased} ｣ "), user_id)
 
         # create increased order detail message
         for increased in increased_list:
             create_order_message(db, OrderMessageCreateModel(
                 order_id=order_modify_body.order_id,
-                message=f"[Auto]問題詳情已新增 ｢ {increased} ｣ "), user_id)
+                message=f"[Auto] 問題詳情已新增 ｢ {increased} ｣ "), user_id)
 
 
 def create_message_cause_status(db: Session, order_id: int, user_id: int, now_status: int, status: int):
@@ -133,7 +137,7 @@ def create_message_cause_status(db: Session, order_id: int, user_id: int, now_st
 
     # auto create message
     create_order_message(db, OrderMessageCreateModel(
-        order_id=order_id, message=f"[Auto]工單狀態由 ｢ {named_now_status} ｣ 改為 ｢ {named_status} ｣ "), user_id)
+        order_id=order_id, message=f"[Auto] 工單狀態由 ｢ {named_now_status} ｣ 改為 ｢ {named_status} ｣ "), user_id)
 
 
 def create_message_cause_engineer(db: Session, order_id: int, now_engineer_id: int, engineer_id: int, user_id):
@@ -153,6 +157,20 @@ def create_message_cause_engineer(db: Session, order_id: int, now_engineer_id: i
     create_order_message(db,
                          OrderMessageCreateModel(
                              order_id=order_id,
-                             message=f"[Auto]工單負責工程師由 ｢ {now_engineer_name} ｣ 改為 ｢ {after_engineer_name} ｣"
+                             message=f"[Auto] 工單負責工程師由 ｢ {now_engineer_name} ｣ 改為 ｢ {after_engineer_name} ｣"
+                         ),
+                         user_id)
+
+
+def create_message_cause_file(db: Session, order_id: int, user_id: int, filename: str, act):
+    # auto create message
+    if act == "upload":
+        message = f"[Auto] 已上傳檔案 ｢ {filename} ｣"
+    else:
+        message = f"[Auto] 已刪除檔案 ｢ {filename} ｣"
+    create_order_message(db,
+                         OrderMessageCreateModel(
+                             order_id=order_id,
+                             message=message
                          ),
                          user_id)

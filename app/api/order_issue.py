@@ -27,7 +27,7 @@ def create_a_order_issue(order_issue_create: OrderIssueCreateModel,
                          Authorize: AuthJWT = Depends(), db: Session = Depends(get_db)):
     current_user = authorize_user(Authorize, db)
 
-    if current_user.level > AuthorityLevel.pm.value:
+    if current_user.level > AuthorityLevel.engineer.value:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     return create_order_issue(db, order_issue_create)

@@ -43,11 +43,14 @@ def download_picture_from_folder(order_id, file_name):
 
 
 def delete_picture_from_folder(db: Session, order_id, file_name):
-    file_path = os.getcwd() + f"/db_image/order_pic_name_by_id/{order_id}/" + str(file_name)
+    dir_path = os.getcwd() + f"/db_image/order_pic_name_by_id/{order_id}/"
+    file_path = dir_path + str(file_name)
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Image doesn't exist.")
     try:
         os.remove(file_path)
+        if not os.listdir(dir_path):  # 判斷資料夾是否為空
+            os.rmdir(dir_path)  # 刪除空資料夾
     except Exception as e:
         raise HTTPException(status_code=500, detail="Failed to Delete image")
     return "Image deleted successfully"

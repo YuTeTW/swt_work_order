@@ -1,18 +1,21 @@
 from datetime import datetime
 from sqlalchemy import Boolean, Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy.orm import relationship
 
 from app.db.database import Base
+from app.models.domain.order_issue import OrderIssue
+from app.models.domain.user import User
 
 
 class Order(Base):
     __tablename__ = "orders"
     id = Column(Integer, primary_key=True, index=True)
     client_id = Column(Integer, ForeignKey("users.id"), index=True)
-    engineer_id = Column(Integer, ForeignKey("users.id"), index=True, default=2)
+    engineer_id = Column(Integer, ForeignKey("users.id"), index=True)
     order_issue_id = Column(Integer, ForeignKey("order_issue.id"), index=True)
     reporter_id = Column(Integer, ForeignKey("users.id"), index=True)
     serial_number = Column(String, default="")
-    company_name = Column(String)
+    company_name = Column(String, default="")
     status = Column(Integer, index=True, default=0)
     mark = Column(Boolean, default=False)
     description = Column(String, default=None)
@@ -21,13 +24,18 @@ class Order(Base):
     created_at = Column(DateTime, index=True)
     updated_at = Column(DateTime)
 
+    # engineer = relationship(User, backref='engineer')
+    # client = relationship(User, backref='client')
+    # reporter = relationship(User, backref='reporter')
+    # order_issue = relationship(OrderIssue, backref='order_issue')
 
-    def __init__(self, client_id, company_name, reporter_id,
+
+    def __init__(self, client_id, reporter_id, engineer_id,
                  order_issue_id, description, detail, **kwargs):
         self.client_id = client_id
         self.order_issue_id = order_issue_id
         self.reporter_id = reporter_id
-        self.company_name = company_name
+        self.engineer_id = engineer_id
         self.description = description
         self.detail = detail
         self.created_at = datetime.now()
