@@ -9,6 +9,7 @@ from app.models.domain.Error_handler import UnicornException
 from app.models.domain.user import User
 from app.models.schemas.order import OrderModifyModel
 from app.models.schemas.order_message import OrderMessageCreateModel, OrderMessageModifyModel
+from app.server.authentication import AuthorityLevel
 
 
 def create_order_message(db: Session, order_message_create, user_id: int):
@@ -146,7 +147,7 @@ def create_message_cause_engineer(db: Session, order_id: int, now_engineer_id: i
     after_engineer_db = db.query(User).filter(User.id == engineer_id).first()
 
     # check order is appointed or not
-    if now_engineer_db and now_engineer_id != 2:  # id 2 is default engineer
+    if now_engineer_db and now_engineer_db.level == AuthorityLevel.engineer.value:
         now_engineer_name = now_engineer_db.name
     else:
         now_engineer_name = "未指派"

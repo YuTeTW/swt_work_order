@@ -17,7 +17,6 @@ from app.server.order.crud_file import (
 from app.server.order.crud import (
     create_order,
     get_all_order,
-    get_some_order,
     delete_order_by_id,
     check_order_status,
     modify_order_by_id,
@@ -95,45 +94,6 @@ def get_all_orders(start_time: Optional[str] = None, end_time: Optional[str] = N
 
     return get_all_order(db, level=current_user.level, user_id=current_user.id,
                          start_time=start_time, end_time=end_time)
-
-
-# 取得部分工單
-@router.get("/order", response_model=List[OrderViewModel])
-def get_some_orders(filter_body: OrderFilterBodyModel, start_time: Optional[str] = None, end_time: Optional[str] = None,
-                    db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
-    current_user = authorize_user(Authorize, db)
-
-    # check filter client authorize when get order
-    if current_user.level > AuthorityLevel.pm.value and filter_body.client_id_list:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
-    # check filter engineer authorize when get order
-    if current_user.level > AuthorityLevel.pm.value and filter_body.engineer_id_list:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
-    # check the type of time filter and the time priority
-    try:
-        if start_time is not None:
-            start_time = datetime.strptime(start_time, "%Y-%m-%d")
-        if end_time is not None:
-            end_time = datetime.strptime(end_time, "%Y-%m-%d")
-            end_time = end_time + timedelta(days=1)
-        if start_time is not None and end_time is not None and start_time > end_time:
-            start_time, end_time = end_time, start_time
-            end_time = end_time + timedelta(days=1)
-    except Exception as e:
-        print(e)
-        raise HTTPException(status_code=422, detail="""start_time or end_time type fail (example: 2023-01-25) """)
-
-    return get_some_order(
-        db, current_user,
-        filter_body.client_id_list,
-        filter_body.engineer_id_list,
-        filter_body.order_issue_id_list,
-        filter_body.status_list,
-        start_time,
-        end_time
-    )
 
 
 # 取得單一工單
@@ -296,11 +256,11 @@ async def upload_picture(client_id: int, db: Session = Depends(get_db), Authoriz
 ##################################################
 # @router.get("/test", response_model=List[dict])
 @router.get("/test")
-def test_get_all_orders(order_modify_body: OrderModifyModel,
+def test_get_all_orders(start_time: Optional[str] = None, end_time: Optional[str] = None,
                         db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     # create message after modify order engineer
     current_user = authorize_user(Authorize, db)
     # print(current_user.id)
     # create_message_cause_order_info(db, 9, order_modify_body)
-    test_get_all_order()
-    pass
+    return test_get_all_order(db, current_user.id)
+
