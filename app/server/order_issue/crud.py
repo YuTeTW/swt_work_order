@@ -17,7 +17,7 @@ def create_order_issue(db: Session, order_issue_create: OrderIssueCreateModel) -
         raise HTTPException(status_code=400, detail="Issue name already exist")
 
     # Check severity range
-    if not isinstance(order_issue_create.severity, int) or order_issue_create.severity < 0:
+    if not isinstance(order_issue_create.severity, float) or order_issue_create.severity < 0:
         raise HTTPException(status_code=400, detail="Issue severity must be a positive integer")
 
     # Check time range

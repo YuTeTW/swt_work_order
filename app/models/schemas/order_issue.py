@@ -10,7 +10,7 @@ class OrderBase(BaseModel):
 
 class OrderIssueCreateModel(OrderBase):
     name: str
-    severity: int
+    severity: Union[int, float]
     time_hours: Union[int, float]
 
     class Config:

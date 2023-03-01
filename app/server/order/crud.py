@@ -66,8 +66,6 @@ def create_order(db: Session, reporter_id: int, company_name, order_create: Orde
     return db_order
 
 
-
-
 def get_order_view_model(each_order, engineer_name, client_name, issue_name, mark):
     engineer_name = engineer_name if engineer_name != "default_engineer" else "未指派"
     issue_name = issue_name if issue_name else "未選擇問題種類"
@@ -92,37 +90,36 @@ def get_order_view_model(each_order, engineer_name, client_name, issue_name, mar
         file_name=all_file_name
     )
 
+
 def get_all_order(db: Session, level: int, user_id: int, start_time: datetime, end_time: datetime):
     engineer_alias = aliased(User)
     client_alias = aliased(User)
-    order_db = db.query(Order, engineer_alias.name, client_alias.name, OrderIssue.name,
+    order_db_list = db.query(Order, engineer_alias.name, client_alias.name, OrderIssue.name,
                         UserMarkOrder.mark) \
         .outerjoin(engineer_alias, Order.engineer_id == engineer_alias.id) \
         .outerjoin(client_alias, Order.client_id == client_alias.id) \
         .outerjoin(OrderIssue, Order.order_issue_id == OrderIssue.id) \
         .outerjoin(UserMarkOrder, and_(
-        UserMarkOrder.order_id == Order.id,
-        UserMarkOrder.user_id == user_id
-    ))
+            UserMarkOrder.order_id == Order.id,
+            UserMarkOrder.user_id == user_id
+        ))
 
     if level == AuthorityLevel.engineer.value:
         default_engineer = db.query(User).filter_by(level=-1).first()
-        order_db = order_db.filter(Order.engineer_id.in_([default_engineer.id, user_id]))
+        order_db_list = order_db_list.filter(Order.engineer_id.in_([default_engineer.id, user_id]))
 
     # client only get self orders
     if level == AuthorityLevel.client.value:
-        order_db = order_db.filter(Order.client_id == user_id)
+        order_db_list = order_db_list.filter(Order.client_id == user_id)
 
-    # filter start time
-    if start_time:
-        order_db = order_db.filter(Order.created_at > start_time)
+    if start_time:  # filter start time
+        order_db_list = order_db_list.filter(Order.created_at > start_time)
 
-    # filter end time
-    if end_time:
-        order_db = order_db.filter(Order.created_at < end_time)
+    if end_time:  # filter end time
+        order_db_list = order_db_list.filter(Order.created_at < end_time)
 
     view_models = [get_order_view_model(each_order, engineer_name, client_name, issue_name, mark)
-                   for each_order, engineer_name, client_name, issue_name, mark in order_db]
+                   for each_order, engineer_name, client_name, issue_name, mark in order_db_list]
 
     return view_models
 
@@ -131,24 +128,25 @@ def get_a_order(db, order_id, user_id):
     # Join the Order table with the User and OrderIssue tables
     engineer_alias = aliased(User)
     client_alias = aliased(User)
-    order_db = db.query(Order, engineer_alias.name, client_alias.name, OrderIssue.name,
+    order_db_list = db.query(Order, engineer_alias.name, client_alias.name, OrderIssue.name,
                         UserMarkOrder.mark) \
         .outerjoin(engineer_alias, Order.engineer_id == engineer_alias.id) \
         .outerjoin(client_alias, Order.client_id == client_alias.id) \
         .outerjoin(OrderIssue, Order.order_issue_id == OrderIssue.id) \
         .outerjoin(UserMarkOrder, and_(
-        UserMarkOrder.order_id == Order.id,
-        UserMarkOrder.user_id == user_id
-    )).filter(Order.id == order_id)
+            UserMarkOrder.order_id == Order.id,
+            UserMarkOrder.user_id == user_id
+        )).filter(Order.id == order_id)
 
     view_models = [get_order_view_model(each_order, engineer_name, client_name, issue_name, mark)
-                   for each_order, engineer_name, client_name, issue_name, mark in order_db]
+                   for each_order, engineer_name, client_name, issue_name, mark in order_db_list]
 
     return view_models[0]
 
 
 def check_order_status(db: Session, order_id_list):
-    order_db = db.query(Order).filter(Order.id.in_(order_id_list), Order.status != OrderStatus.not_appoint.value).first()
+    order_db = db.query(Order).filter(Order.id.in_(order_id_list),
+                                      Order.status != OrderStatus.not_appoint.value).first()
     if order_db:
         status = order_db.status
     else:
@@ -218,7 +216,8 @@ def check_modify_status_permission(db: Session, level: int, now_status: int,
                 status_code=401,
                 detail="engineer only can change status to not appoint or finish"
             )
-        if status == OrderStatus.working.value and not db.query(Order).filter(Order.engineer_id == current_user_id).first():
+        if status == OrderStatus.working.value and not db.query(Order).filter(
+                Order.engineer_id == current_user_id).first():
             raise HTTPException(
                 status_code=401,
                 detail="engineer only can change principle order status"
@@ -317,4 +316,3 @@ def test_get_all_order(db: Session, user_id):
                    for each_order, engineer_name, client_name, issue_name, mark in order_db]
 
     return view_models
-

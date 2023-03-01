@@ -176,10 +176,9 @@ def delete_user_by_user_id(db: Session, user_id: int):
         elif user_db.level == AuthorityLevel.engineer.value or user_db.level == AuthorityLevel.pm.value:
             # change engineer to default engineer
             order_db = db.query(Order).filter(Order.engineer_id == user_id).first()
+            default_engineer = db.query(User).filter(User.level == AuthorityLevel.default_engineer.value).first()
             if order_db:
-                print(132749087190823749012)
-
-                order_db.engineer_id = 2  # change to default engineer_id = 2
+                order_db.engineer_id = default_engineer.id  # change to default engineer_id = 2
                 order_db.updated_at = datetime.now()
 
             # modify order message by delete user
@@ -193,7 +192,7 @@ def delete_user_by_user_id(db: Session, user_id: int):
             for order_message, user in order_message_db_list:
                 modify_order_message_by_id(db, OrderMessageModifyModel(
                     order_message_id=order_message.id,
-                    user_id=2,  # change to default engineer id = 2
+                    user_id=default_engineer.id,
                     message=order_message.message + f"(留言者{user.name}已被刪除)")
                     )
             db.commit()
