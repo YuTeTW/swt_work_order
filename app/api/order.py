@@ -9,6 +9,7 @@ from starlette.background import BackgroundTasks
 from app.db.database import get_db
 from app.helper.authentication import authorize_user
 from app.server.authentication import AuthorityLevel
+from app.server.order import OrderStatus
 from app.server.order.crud_file import (
     upload_picture_to_folder,
     download_picture_from_folder,
@@ -105,18 +106,22 @@ def get_a_order_by_id(order_id: int, db: Session = Depends(get_db), Authorize: A
 
 # 刪除工單
 @router.delete("/order")
-def delete_order(order_id: OrderDeleteIdModel, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
+def delete_order(order: OrderDeleteIdModel, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
+    # print(order_id.order_id_list)
+
 
     # check engineer doesn't has authorize to delete order
-    if current_user.level == AuthorityLevel.engineer.value:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    for order_id in order.order_id_list:
+        reporter_id = get_order_reporter(db, order_id)
+        if reporter_id != current_user.id and current_user.level == AuthorityLevel.engineer.value:
+            raise HTTPException(status_code=401, detail="You only can delete order which you create")
 
     # check client can't delete order when order is in progress
-    if current_user.level == AuthorityLevel.client.value and check_order_status(db, order_id.order_id_list):
+    if current_user.level == AuthorityLevel.client.value and check_order_status(db, order.order_id_list):
         raise HTTPException(status_code=400, detail="One of orders is already in progress")
 
-    return delete_order_by_id(db, order_id.order_id_list)
+    return delete_order_by_id(db, order.order_id_list)
 
 
 # 修改工單資訊
@@ -148,7 +153,9 @@ def modify_order_status(order_id: int, status: int, background_tasks: Background
     # check order status
     now_status = get_order_status(db, order_id)
 
-    if now_status == 0 and status == 1 and current_user.level != AuthorityLevel.pm.value:
+    if now_status == OrderStatus.not_appoint.value \
+            and status == OrderStatus.working.value \
+            and current_user.level != AuthorityLevel.pm.value:
         raise HTTPException(status_code=400, detail="Only pm can change status from not appoint to working")
 
     # check user authorize
@@ -247,7 +254,7 @@ async def delete_picture(order_id: int, file_name: str,
 async def upload_picture(client_id: int, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 
-    if current_user.level > 2 and current_user.id != client_id:
+    if current_user.level > AuthorityLevel.engineer.value and current_user.id != client_id:
         raise HTTPException(status_code=401, detail="only can output yourself report")
 
     return await get_report(db, client_id)

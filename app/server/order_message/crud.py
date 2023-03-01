@@ -10,6 +10,7 @@ from app.models.domain.user import User
 from app.models.schemas.order import OrderModifyModel
 from app.models.schemas.order_message import OrderMessageCreateModel, OrderMessageModifyModel
 from app.server.authentication import AuthorityLevel
+from app.server.order import OrderStatus
 
 
 def create_order_message(db: Session, order_message_create, user_id: int):
@@ -17,8 +18,8 @@ def create_order_message(db: Session, order_message_create, user_id: int):
     if not order_db:
         raise HTTPException(status_code=404, detail="order doesn't exist")
 
-    if order_db.status == 3:
-        raise HTTPException(status_code=400, detail="Can't create message when order close")
+    # if order_db.status == OrderStatus.close.value:
+    #     raise HTTPException(status_code=400, detail="Can't create message when order close")
 
     try:
         db_user = OrderMessage(**order_message_create.dict(), user_id=user_id)
@@ -128,10 +129,10 @@ def create_message_cause_order_info(db: Session, user_id: int, order_modify_body
 def create_message_cause_status(db: Session, order_id: int, user_id: int, now_status: int, status: int):
     # change status from integer to mandarin
     name_status = {
-        0: "未處理",
-        1: "處理中",
-        2: "已處理",
-        3: "結單"
+        OrderStatus.not_appoint.value: "未處理",
+        OrderStatus.working.value: "處理中",
+        OrderStatus.finsh.value: "已處理",
+        OrderStatus.close.value: "結單"
     }
     named_status = name_status[status]
     named_now_status = name_status[now_status]

@@ -7,6 +7,7 @@ from app.db.database import get_db
 from app.helper.authentication import authorize_user
 from app.server.authentication import AuthorityLevel, verify_password, check_level
 from app.server.authentication.crud import set_user_enable
+from app.server.user import UserStatus
 from app.server.user.crud import (
     create_user,
     get_user_by_email,
@@ -68,7 +69,7 @@ def get_all_user(db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 
     if not check_level(current_user, AuthorityLevel.pm.value):
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise HTTPException(status_code=401, detail="Online pm can get all user")
 
     return get_all_users(db)
 
@@ -78,8 +79,11 @@ def get_all_user(db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
 def get_users_by_level(level: int, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 
-    if current_user.level == AuthorityLevel.client.value or current_user.level > level:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    if current_user.level == AuthorityLevel.client.value:
+        raise HTTPException(status_code=401, detail="client can't get other user")
+
+    if current_user.level > level:
+        raise HTTPException(status_code=401, detail="Your level doesn't enough")
 
     return get_user_by_level(db, level)
 
@@ -165,11 +169,11 @@ def create_root_and_default_engineer(user_data: UserCreateModel, db: Session = D
 
     # create a default user for principle engineer
     create_user(db, UserCreateModel(
-        level=-1,
+        level=AuthorityLevel.default_engineer.value,
         email="default_engineer@fastwise.net",
         password=user_data.password,
         name="default_engineer",
-        status=1,
+        status=UserStatus.online,
         info={}
     ))
     return user_db

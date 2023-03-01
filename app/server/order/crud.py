@@ -13,6 +13,7 @@ from app.models.domain.user_mark_order import UserMarkOrder
 from app.models.schemas.order import OrderModifyModel, OrderViewModel, OrderCreateModel, OrderMarkPost
 
 from app.server.authentication import AuthorityLevel
+from app.server.order import OrderStatus
 
 
 def get_order_engineer_id(db: Session, order_id: int):
@@ -22,11 +23,15 @@ def get_order_engineer_id(db: Session, order_id: int):
 
 def get_order_status(db: Session, order_id: int):
     order_db = db.query(Order).filter(Order.id == order_id).first()
+    if not order_db:
+        raise HTTPException(status_code=404, detail='order status not found')
     return order_db.status
 
 
 def get_order_reporter(db: Session, order_id: int):
     order_db = db.query(Order).filter(Order.id == order_id).first()
+    if not order_db:
+        raise HTTPException(status_code=404, detail='order reporter not found')
     return order_db.reporter_id
 
 
@@ -143,7 +148,7 @@ def get_a_order(db, order_id, user_id):
 
 
 def check_order_status(db: Session, order_id_list):
-    order_db = db.query(Order).filter(Order.id.in_(order_id_list), Order.status != 0).first()
+    order_db = db.query(Order).filter(Order.id.in_(order_id_list), Order.status != OrderStatus.not_appoint.value).first()
     if order_db:
         status = order_db.status
     else:
@@ -151,7 +156,7 @@ def check_order_status(db: Session, order_id_list):
     return status
 
 
-def delete_order_by_id(db: Session, order_id_list):
+def delete_order_by_id(db: Session, order_id_list: list):
     try:
         # delete all message in order
         from app.models.domain.order_message import OrderMessage
@@ -195,12 +200,12 @@ def check_modify_status_permission(db: Session, level: int, now_status: int,
                 status_code=401,
                 detail="order isn't yours"
             )
-        if now_status != 2:
+        if now_status != OrderStatus.finsh.value:
             raise HTTPException(
                 status_code=401,
                 detail="client only can change status when order finish"
             )
-        if status not in [1, 3] and status != 2:
+        if status not in [OrderStatus.working.value, OrderStatus.close.value] and status != OrderStatus.finsh.value:
             raise HTTPException(
                 status_code=401,
                 detail="client only can change status to 'in process' or 'closing order' when order finish"
@@ -208,12 +213,12 @@ def check_modify_status_permission(db: Session, level: int, now_status: int,
 
     # check engineer change status auth
     elif level == AuthorityLevel.engineer.value:  # engineer
-        if status in [3, 0]:
+        if status in [OrderStatus.close.value, OrderStatus.not_appoint.value]:
             raise HTTPException(
                 status_code=401,
                 detail="engineer only can change status to not appoint or finish"
             )
-        if status == 1 and not db.query(Order).filter(Order.engineer_id == current_user_id).first():
+        if status == OrderStatus.working.value and not db.query(Order).filter(Order.engineer_id == current_user_id).first():
             raise HTTPException(
                 status_code=401,
                 detail="engineer only can change principle order status"
@@ -221,7 +226,7 @@ def check_modify_status_permission(db: Session, level: int, now_status: int,
     # check pm change status auth
     elif level == AuthorityLevel.pm.value:  # pm
         order_db = db.query(Order).filter(Order.id == order_id).first()
-        if status == 3 and order_db.created_at + timedelta(days=7) > datetime.now():
+        if status == OrderStatus.close.value and order_db.updated_at + timedelta(days=7) > datetime.now():
             raise HTTPException(
                 status_code=401,
                 detail="pm can't change status to close within 7 days after the order created"
@@ -247,7 +252,7 @@ def modify_order_principal_engineer_by_id(db: Session, order_id: int, engineer_i
     if not order_db:
         raise HTTPException(status_code=404, detail="order not found")
 
-    status = 1 if order_db.status == 0 else order_db.status
+    status = OrderStatus.working.value if order_db.status == OrderStatus.not_appoint.value else order_db.status
     order_db.engineer_id = engineer_id
     order_db.status = status
     order_db.updated = datetime.now()

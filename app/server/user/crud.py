@@ -29,7 +29,7 @@ def get_user_by_id(db: Session, user_id: int):
 
 def get_user_by_level(db: Session, level: int):
     # user 2 is default_engineer
-    return db.query(User).filter(User.level == level, User.id != 2).all()
+    return db.query(User).filter(User.level == level, User.level > AuthorityLevel.root.value).all()
 
 
 def check_user_exist(db: Session, user_id: int):

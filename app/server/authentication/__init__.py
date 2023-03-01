@@ -34,6 +34,8 @@ class AuthorityLevel(Enum):
     engineer: int = 2
     client: int = 3
 
+    default_engineer: int = -1
+
 
 class Settings(BaseModel):
     authjwt_secret_key: str = "secret"
