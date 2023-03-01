@@ -32,7 +32,6 @@ from app.server.order.crud import (
 from app.models.schemas.order import (
     OrderCreateModel,
     OrderCreateResponseModel,
-    OrderFilterBodyModel,
     OrderDeleteIdModel,
     OrderModifyModel,
     OrderViewModel,
@@ -73,8 +72,7 @@ async def create_a_order(order_create: OrderCreateModel, background_tasks: Backg
 
 
 # 取得所有工單
-# @router.get("/order/all", response_model=List[OrderViewModel])
-@router.get("/order/all")
+@router.get("/order/all", response_model=List[OrderViewModel])
 def get_all_orders(start_time: Optional[str] = None, end_time: Optional[str] = None,
                    db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
@@ -108,8 +106,6 @@ def get_a_order_by_id(order_id: int, db: Session = Depends(get_db), Authorize: A
 @router.delete("/order")
 def delete_order(order: OrderDeleteIdModel, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
-    # print(order_id.order_id_list)
-
 
     # check engineer doesn't has authorize to delete order
     for order_id in order.order_id_list:
@@ -218,8 +214,10 @@ async def upload_picture(order_id: int, file: UploadFile,
     current_user = authorize_user(Authorize, db)
 
     reporter_id = get_order_reporter(db, order_id)
-    # check
-    if current_user.level in (AuthorityLevel.pm.value, AuthorityLevel.engineer.value) and current_user.id != reporter_id:
+
+    # check upload picture auth
+    if current_user.level in (AuthorityLevel.pm.value, AuthorityLevel.engineer.value) \
+            and current_user.id != reporter_id:
         raise HTTPException(status_code=401, detail="Only order reporter and client can upload picture")
 
     create_message_cause_file(db, order_id, current_user.id, file.filename, "upload")

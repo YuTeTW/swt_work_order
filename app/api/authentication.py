@@ -11,7 +11,7 @@ from app.server.user.crud import check_email_exist
 from app.server.authentication.crud import create_and_set_user_password
 from app.server.authentication import (
     authenticate_user,
-    ACCESS_TOKEN_EXPIRE_MINUTES,
+    ACCESS_TOKEN_EXPIRE_MINUTES, AuthorityLevel,
 )
 from app.models.schemas.user import (
     UserLoginViewModel,
@@ -50,10 +50,13 @@ def login(user_data: UserLoginViewModel, Authorize: AuthJWT = Depends(), db: Ses
 def forget_password(send_to_email: str, forget_account: str, background_tasks: BackgroundTasks,
                     Authorize: AuthJWT = Depends(), db: Session = Depends(get_db)):
     current_user = authorize_user(Authorize, db)
-    if current_user.level > 1:
+
+    if current_user.level > AuthorityLevel.pm.value:
         raise HTTPException(status_code=401, detail="Unauthorized")
+
     if not check_email_exist(db, forget_account):
         return "Account is not exist"
+
     password = create_and_set_user_password(db, forget_account)
     send_forget_password_email(send_to_email, password, background_tasks=background_tasks)
     return "Send forget password email done"
