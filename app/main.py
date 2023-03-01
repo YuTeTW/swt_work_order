@@ -1,4 +1,4 @@
-# import jpype
+import jpype
 
 from app import create_app
 from app.db.database import get_db
@@ -9,13 +9,13 @@ from fastapi import Request
 app = create_app()
 
 
-# @app.on_event("startup")
-# def startup_event():
-#     jpype.startJVM()
-#
-# @app.on_event("shutdown")
-# def shutdown_event():
-#     jpype.shutdownJVM()
+@app.on_event("startup")
+def startup_event():
+    jpype.startJVM()
+
+@app.on_event("shutdown")
+def shutdown_event():
+    jpype.shutdownJVM()
 
 
 @app.exception_handler(UnicornException)
