@@ -9,8 +9,8 @@ from app.models.domain.order_issue import OrderIssue
 from app.models.domain.user import User
 from app.models.domain.user_mark_order import UserMarkOrder
 
-# import jpype
-# import asposecells
+import jpype
+import asposecells
 
 
 def get_order_db(db, user_id):

@@ -45,7 +45,7 @@ def create_order(db: Session, reporter_id: int, company_name, order_create: Orde
     if not db.query(User).filter(User.id == reporter_id).first():
         raise HTTPException(status_code=404, detail='order issue not found')
 
-    default_engineer = db.query(User).filter(User.level == -1).first()
+    default_engineer = db.query(User).filter(User.level == AuthorityLevel.default_engineer.value).first()
     if not default_engineer:
         raise HTTPException(status_code=404, detail='order issue not found')
 
