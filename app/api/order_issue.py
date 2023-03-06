@@ -30,6 +30,8 @@ def create_a_order_issue(order_issue_create: OrderIssueCreateModel,
     if current_user.level > AuthorityLevel.engineer.value:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
+
+    print(order_issue_create.time_hours)
     return create_order_issue(db, order_issue_create)
 
 

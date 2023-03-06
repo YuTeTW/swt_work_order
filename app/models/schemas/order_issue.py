@@ -10,8 +10,8 @@ class OrderBase(BaseModel):
 
 class OrderIssueCreateModel(OrderBase):
     name: str
-    severity: Union[int, float]
-    time_hours: Union[int, float]
+    severity: int
+    time_hours: float
 
     class Config:
         schema_extra = {

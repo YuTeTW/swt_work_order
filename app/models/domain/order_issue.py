@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Boolean, Column, Integer, String, DateTime
+from sqlalchemy import Boolean, Column, Integer, String, DateTime, FLOAT
 
 from app.db.database import Base
 
@@ -9,7 +9,7 @@ class OrderIssue(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True)
     severity = Column(Integer)
-    time_hours = Column(Integer)
+    time_hours = Column(FLOAT)
     created_at = Column(DateTime)
     updated_at = Column(DateTime)
 
