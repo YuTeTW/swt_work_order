@@ -30,6 +30,9 @@ def create_a_order_message(order_message_create: OrderMessageCreateModel,
     if current_user.level > AuthorityLevel.engineer.value:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
+    if not order_message_create.message:
+        raise HTTPException(status_code=400, detail="You need to add message")
+
     return create_order_message(db, order_message_create, current_user.id)
 
 

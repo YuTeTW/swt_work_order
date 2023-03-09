@@ -72,7 +72,9 @@ async def create_a_order(order_create: OrderCreateModel, background_tasks: Backg
 
 
 # 取得所有工單
-@router.get("/order/all", response_model=List[OrderViewModel])
+# @router.get("/order/all", response_model=List[OrderViewModel])
+@router.get("/order/all")
+
 def get_all_orders(start_time: Optional[str] = None, end_time: Optional[str] = None,
                    db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)

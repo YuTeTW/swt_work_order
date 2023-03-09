@@ -43,11 +43,11 @@ def create_order(db: Session, reporter_id: int, company_name, order_create: Orde
         raise HTTPException(status_code=404, detail='order issue not found')
 
     if not db.query(User).filter(User.id == reporter_id).first():
-        raise HTTPException(status_code=404, detail='order issue not found')
+        raise HTTPException(status_code=404, detail='User not found')
 
     default_engineer = db.query(User).filter(User.level == AuthorityLevel.default_engineer.value).first()
     if not default_engineer:
-        raise HTTPException(status_code=404, detail='order issue not found')
+        raise HTTPException(status_code=404, detail='default_engineer not found')
 
     try:
         order_create.detail = str(order_create.detail)
@@ -95,14 +95,14 @@ def get_all_order(db: Session, level: int, user_id: int, start_time: datetime, e
     engineer_alias = aliased(User)
     client_alias = aliased(User)
     order_db_list = db.query(Order, engineer_alias.name, client_alias.name, OrderIssue.name,
-                        UserMarkOrder.mark) \
+                             UserMarkOrder.mark) \
         .outerjoin(engineer_alias, Order.engineer_id == engineer_alias.id) \
         .outerjoin(client_alias, Order.client_id == client_alias.id) \
         .outerjoin(OrderIssue, Order.order_issue_id == OrderIssue.id) \
         .outerjoin(UserMarkOrder, and_(
             UserMarkOrder.order_id == Order.id,
             UserMarkOrder.user_id == user_id
-        ))
+    ))
 
     if level == AuthorityLevel.engineer.value:
         default_engineer = db.query(User).filter_by(level=-1).first()
@@ -118,9 +118,11 @@ def get_all_order(db: Session, level: int, user_id: int, start_time: datetime, e
     if end_time:  # filter end time
         order_db_list = order_db_list.filter(Order.created_at < end_time)
 
+    # print(order_db_list.all())
+
     view_models = [get_order_view_model(each_order, engineer_name, client_name, issue_name, mark)
                    for each_order, engineer_name, client_name, issue_name, mark in order_db_list]
-
+    print(view_models)
     return view_models
 
 
@@ -129,14 +131,14 @@ def get_a_order(db, order_id, user_id):
     engineer_alias = aliased(User)
     client_alias = aliased(User)
     order_db_list = db.query(Order, engineer_alias.name, client_alias.name, OrderIssue.name,
-                        UserMarkOrder.mark) \
+                             UserMarkOrder.mark) \
         .outerjoin(engineer_alias, Order.engineer_id == engineer_alias.id) \
         .outerjoin(client_alias, Order.client_id == client_alias.id) \
         .outerjoin(OrderIssue, Order.order_issue_id == OrderIssue.id) \
         .outerjoin(UserMarkOrder, and_(
-            UserMarkOrder.order_id == Order.id,
-            UserMarkOrder.user_id == user_id
-        )).filter(Order.id == order_id)
+        UserMarkOrder.order_id == Order.id,
+        UserMarkOrder.user_id == user_id
+    )).filter(Order.id == order_id)
 
     view_models = [get_order_view_model(each_order, engineer_name, client_name, issue_name, mark)
                    for each_order, engineer_name, client_name, issue_name, mark in order_db_list]
@@ -247,9 +249,12 @@ def modify_order_status_by_id(db: Session, order_id: int, status: int):
 
 def modify_order_principal_engineer_by_id(db: Session, order_id: int, engineer_id: int):
     order_db = db.query(Order).filter(Order.id == order_id, Order.id == order_id).first()
+    user_db = db.query(User).filter(User.id == engineer_id).first()
 
     if not order_db:
         raise HTTPException(status_code=404, detail="order not found")
+    if not user_db:
+        raise HTTPException(status_code=404, detail="user not found")
 
     status = OrderStatus.working.value if order_db.status == OrderStatus.not_appoint.value else order_db.status
     order_db.engineer_id = engineer_id
