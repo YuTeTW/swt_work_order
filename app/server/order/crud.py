@@ -50,6 +50,7 @@ def create_order(db: Session, reporter_id: int, company_name, order_create: Orde
         raise HTTPException(status_code=404, detail='default_engineer not found')
 
     try:
+        print(order_create.dict())
         order_create.detail = str(order_create.detail)
         db_order = Order(**order_create.dict(),
                          reporter_id=reporter_id,
@@ -87,7 +88,8 @@ def get_order_view_model(each_order, engineer_name, client_name, issue_name, mar
         status=each_order.status,
         created_at=each_order.created_at,
         updated_at=each_order.updated_at,
-        file_name=all_file_name
+        file_name=all_file_name,
+        report_time=each_order.report_time
     )
 
 
@@ -227,11 +229,11 @@ def check_modify_status_permission(db: Session, level: int, now_status: int,
     # check pm change status auth
     elif level == AuthorityLevel.pm.value:  # pm
         order_db = db.query(Order).filter(Order.id == order_id).first()
-        if status == OrderStatus.close.value and order_db.updated_at + timedelta(days=7) > datetime.now():
-            raise HTTPException(
-                status_code=401,
-                detail="pm can't change status to close within 7 days after the order created"
-            )
+        # if status == OrderStatus.close.value and order_db.updated_at + timedelta(days=7) > datetime.now():
+        #     raise HTTPException(
+        #         status_code=401,
+        #         detail="pm can't change status to close within 7 days after the order created"
+        #     )
 
 
 def modify_order_status_by_id(db: Session, order_id: int, status: int):

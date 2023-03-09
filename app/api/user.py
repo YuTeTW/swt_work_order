@@ -94,6 +94,10 @@ def patch_user_info(user_patch: UserPatchInfoModel,
                     db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 
+    # Can't change level to same level or higher lever
+    if user_patch >= current_user.level:
+        raise HTTPException(status_code=401, detail="can't change level to same level or higher lever")
+
     # check pm can't modify other pm
     patch_user_db = get_user_by_id(db, user_patch.user_id)
     if current_user.level == AuthorityLevel.pm.value and \
@@ -101,7 +105,7 @@ def patch_user_info(user_patch: UserPatchInfoModel,
             current_user.id != user_patch.user_id:
         raise HTTPException(status_code=401, detail="pm can't modify other pm")
 
-    # check client and engineer only can change its
+    # check client and engineer only can change its info
     if current_user.level == AuthorityLevel.engineer.value or current_user.level == AuthorityLevel.client.value:
         if current_user.id != user_patch.user_id:
             raise HTTPException(status_code=401, detail="engineer and client only can modify himself")

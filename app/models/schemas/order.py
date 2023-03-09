@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import BaseModel
 from datetime import datetime
@@ -14,7 +14,8 @@ class OrderCreateModel(OrderBase):
     client_id: int
     order_issue_id: int
     description: str
-    detail: list
+    detail: List[str]
+    report_time: Optional[datetime]
 
     class Config:
         schema_extra = {
@@ -36,6 +37,7 @@ class OrderCreateResponseModel(OrderBase):
     order_issue_id: int
     description: str
     detail: list
+    report_time: datetime
 
 
 class OrderFilterBodyModel(OrderBase):
@@ -62,6 +64,7 @@ class OrderViewModel(OrderBase):
     file_name: list
     description: str
     detail: list
+    report_time: datetime
     created_at: datetime
     updated_at: datetime
 
