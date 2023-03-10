@@ -83,14 +83,23 @@ def modify_order_message_by_id(db: Session, order_message_modify: OrderMessageMo
 def create_message_cause_order_info(db: Session, user_id: int, order_modify_body: OrderModifyModel):
     old_order_db = db.query(Order).filter(Order.id == order_modify_body.order_id).first()
 
+    if not old_order_db:
+        raise HTTPException(status_code=404, detail='Order not found')
+
     old_order_issue_db = db.query(OrderIssue).filter(OrderIssue.id == old_order_db.order_issue_id).first()
     new_order_issue_db = db.query(OrderIssue).filter(OrderIssue.id == order_modify_body.order_issue_id).first()
+
+    if not old_order_issue_db or not new_order_issue_db:
+        raise HTTPException(status_code=404, detail='Order issue not found')
 
     old_order_description = old_order_db.description
     new_order_description = order_modify_body.description
 
     old_order_detail = eval(old_order_db.detail)
     new_order_detail = order_modify_body.detail
+
+    old_order_report_time = old_order_db.report_time
+    new_order_report_time = order_modify_body.report_time
 
     if old_order_db.order_issue_id != order_modify_body.order_issue_id:
         create_order_message(db, OrderMessageCreateModel(
@@ -100,7 +109,7 @@ def create_message_cause_order_info(db: Session, user_id: int, order_modify_body
     if old_order_description != new_order_description:
         create_order_message(db, OrderMessageCreateModel(
             order_id=order_modify_body.order_id,
-            message=f"[Auto] 問題簡述由 ｢ {old_order_db.description} ｣ 改為 ｢ {new_order_description} ｣"), user_id)
+            message=f"[Auto] 問題簡述由 ｢ {old_order_description} ｣ 改為 ｢ {new_order_description} ｣"), user_id)
 
     if old_order_detail != new_order_detail:
         # set two list
@@ -125,6 +134,11 @@ def create_message_cause_order_info(db: Session, user_id: int, order_modify_body
                 order_id=order_modify_body.order_id,
                 message=f"[Auto] 問題詳情已新增 ｢ {increased} ｣ "), user_id)
 
+    if old_order_report_time != new_order_report_time:
+        create_order_message(db, OrderMessageCreateModel(
+            order_id=order_modify_body.order_id,
+            message=f"[Auto] 提報時間由 ｢ {old_order_report_time} ｣ 改為 ｢ {new_order_report_time} ｣"), user_id)
+
 
 def create_message_cause_status(db: Session, order_id: int, user_id: int, now_status: int, status: int):
     # change status from integer to mandarin
@@ -140,6 +154,27 @@ def create_message_cause_status(db: Session, order_id: int, user_id: int, now_st
     # auto create message
     create_order_message(db, OrderMessageCreateModel(
         order_id=order_id, message=f"[Auto] 工單狀態由 ｢ {named_now_status} ｣ 改為 ｢ {named_status} ｣ "), user_id)
+
+
+def create_message_cause_status_and_solution(
+        db: Session, order_id: int, user_id: int, now_status: int, status: int, solution: str
+):
+    # change status from integer to mandarin
+    name_status = {
+        OrderStatus.not_appoint.value: "未處理",
+        OrderStatus.working.value: "處理中",
+        OrderStatus.finsh.value: "已處理",
+        OrderStatus.close.value: "結單"
+    }
+    named_status = name_status[status]
+    named_now_status = name_status[now_status]
+
+    # auto create message
+    create_order_message(db, OrderMessageCreateModel(
+        order_id=order_id, message=f"[Auto] 工單狀態由 ｢ {named_now_status} ｣ 改為 ｢ {named_status} ｣ "), user_id)
+
+    create_order_message(db, OrderMessageCreateModel(
+        order_id=order_id, message=f"[Auto] 工單最後處理方式改為 ｢ {solution} ｣ "), user_id)
 
 
 def create_message_cause_engineer(db: Session, order_id: int, now_engineer_id: int, engineer_id: int, user_id):

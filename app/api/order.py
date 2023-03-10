@@ -27,6 +27,7 @@ from app.server.order.crud import (
     check_modify_status_permission,
     get_a_order,
     get_order_status, get_order_engineer_id, get_order_reporter, test_get_all_order,
+    modify_order_status_and_add_solution_by_id,
 )
 
 from app.models.schemas.order import (
@@ -41,7 +42,8 @@ from app.models.schemas.order import (
 from app.server.order.output_pdf import get_report
 from app.server.order_message.crud import (
     create_message_cause_engineer,
-    create_message_cause_status, create_message_cause_order_info, create_message_cause_file
+    create_message_cause_status, create_message_cause_order_info, create_message_cause_file,
+    create_message_cause_status_and_solution
 )
 from app.server.user.crud import (
     get_user_by_id
@@ -64,6 +66,7 @@ async def create_a_order(order_create: OrderCreateModel, background_tasks: Backg
     if current_user.level == AuthorityLevel.client.value and current_user.id != order_create.client_id:
         raise HTTPException(status_code=401, detail="Client only create order for self")
 
+    order_create.report_time = datetime.strptime(order_create.report_time, "%Y-%m-%d")
     order_db = create_order(db, current_user.id, user_db.name, order_create)
 
     # Send email after create new order
@@ -137,6 +140,7 @@ def modify_order(order_modify_body: OrderModifyModel,
         raise HTTPException(status_code=400, detail="One of orders is already in progress")
 
     # create message after modify order engineer
+    order_modify_body.report_time = datetime.strptime(order_modify_body.report_time, "%Y-%m-%d")
     create_message_cause_order_info(db, current_user.id, order_modify_body)
 
     return modify_order_by_id(db, order_modify_body)
@@ -165,6 +169,33 @@ def modify_order_status(order_id: int, status: int, background_tasks: Background
     # create message after modify order status
     if now_status != status:
         create_message_cause_status(db, order_id, current_user.id, now_status, status)
+
+    # send email when modify order
+    # send_email("judhaha@gmail.com", background_tasks)
+    return "Change order status finish"
+
+
+@router.patch("/order/status/solution")
+def modify_order_status(order_id: int, status: int, solution: str, background_tasks: BackgroundTasks,
+                        db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
+    current_user = authorize_user(Authorize, db)
+    # check order status
+    now_status = get_order_status(db, order_id)
+
+    if now_status == OrderStatus.not_appoint.value \
+            and status == OrderStatus.working.value \
+            and current_user.level != AuthorityLevel.pm.value:
+        raise HTTPException(status_code=400, detail="Only pm can change status from not appoint to working")
+
+    # check user authorize
+    check_modify_status_permission(db, current_user.level, now_status, status, order_id, current_user.id)
+
+    # start modify order
+    modify_order_status_and_add_solution_by_id(db, order_id, status, solution)
+
+    # create message after modify order status
+    if now_status != status:
+        create_message_cause_status_and_solution(db, order_id, current_user.id, now_status, status, solution)
 
     # send email when modify order
     # send_email("judhaha@gmail.com", background_tasks)

@@ -15,7 +15,7 @@ class OrderCreateModel(OrderBase):
     order_issue_id: int
     description: str
     detail: List[str]
-    report_time: Optional[datetime]
+    report_time: Optional[str]
 
     class Config:
         schema_extra = {
@@ -104,6 +104,7 @@ class OrderModifyModel(OrderBase):
     order_issue_id: int
     description: str
     detail: list
+    report_time: str
 
 
 class OrderMarkPost(OrderBase):

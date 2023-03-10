@@ -183,11 +183,18 @@ def delete_order_by_id(db: Session, order_id_list: list):
 
 def modify_order_by_id(db: Session, order_modify: OrderModifyModel):
     order_db = db.query(Order).filter(Order.id == order_modify.order_id).first()
+    order_issue_db = db.query(OrderIssue).filter(OrderIssue.id == order_modify.order_issue_id).first()
+
     if not order_db:
         raise HTTPException(status_code=404, detail='order not found')
+
+    if not order_issue_db:
+        raise HTTPException(status_code=404, detail='order issue not found')
+
     order_db.order_issue_id = order_modify.order_issue_id
     order_db.description = order_modify.description
     order_db.detail = str(order_modify.detail)
+    order_db.report_time = order_modify.report_time
     order_db.updated_at = datetime.now()
     db.commit()
     return "Order modify successfully"
@@ -248,6 +255,19 @@ def modify_order_status_by_id(db: Session, order_id: int, status: int):
     db.commit()
     return order_db
 
+
+def modify_order_status_and_add_solution_by_id(db: Session, order_id: int, status: int, solution: str):
+    order_db = db.query(Order).filter(Order.id == order_id).first()
+
+    if not order_db:
+        raise HTTPException(status_code=404, detail="order not found")
+
+    # status
+    order_db.status = status
+    order_db.solution = solution
+    order_db.updated = datetime.now()
+    db.commit()
+    return order_db
 
 def modify_order_principal_engineer_by_id(db: Session, order_id: int, engineer_id: int):
     order_db = db.query(Order).filter(Order.id == order_id, Order.id == order_id).first()
