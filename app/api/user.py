@@ -95,7 +95,7 @@ def patch_user_info(user_patch: UserPatchInfoModel,
     current_user = authorize_user(Authorize, db)
 
     # Can't change level to same level or higher lever
-    if user_patch.level >= current_user.level:
+    if user_patch.level > current_user.level:
         raise HTTPException(status_code=401, detail="can't change level to same level or higher lever")
 
     # check pm can't modify other pm
