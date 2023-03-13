@@ -177,7 +177,7 @@ def create_root_and_default_engineer(user_data: UserCreateModel, db: Session = D
         email="default_engineer@fastwise.net",
         password=user_data.password,
         name="default_engineer",
-        status=UserStatus.online,
+        status=UserStatus.online.value,
         info={}
     ))
     return user_db

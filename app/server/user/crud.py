@@ -24,7 +24,10 @@ def get_all_users(db: Session):
 
 
 def get_user_by_id(db: Session, user_id: int):
-    return db.query(User).filter(User.id == user_id).first()
+    user_db = db.query(User).filter(User.id == user_id).first()
+    if not user_db:
+        raise HTTPException(status_code=404, detail="user not exist")
+    return user_db
 
 
 def get_user_by_level(db: Session, level: int):

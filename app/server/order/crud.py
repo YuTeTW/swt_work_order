@@ -124,7 +124,6 @@ def get_all_order(db: Session, level: int, user_id: int, start_time: datetime, e
 
     view_models = [get_order_view_model(each_order, engineer_name, client_name, issue_name, mark)
                    for each_order, engineer_name, client_name, issue_name, mark in order_db_list]
-    print(view_models)
     return view_models
 
 

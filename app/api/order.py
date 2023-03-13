@@ -66,7 +66,8 @@ async def create_a_order(order_create: OrderCreateModel, background_tasks: Backg
     if current_user.level == AuthorityLevel.client.value and current_user.id != order_create.client_id:
         raise HTTPException(status_code=401, detail="Client only create order for self")
 
-    order_create.report_time = datetime.strptime(order_create.report_time, "%Y-%m-%d")
+    if order_create.report_time:
+        order_create.report_time = datetime.strptime(order_create.report_time, "%Y-%m-%d")
     order_db = create_order(db, current_user.id, user_db.name, order_create)
 
     # Send email after create new order
@@ -148,7 +149,7 @@ def modify_order(order_modify_body: OrderModifyModel,
 
 # 修改工單進行狀態
 @router.patch("/order/status")
-def modify_order_status(order_id: int, status: int, background_tasks: BackgroundTasks,
+def modify_order_status(order_id: int, background_tasks: BackgroundTasks, status: int = 2,
                         db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 
