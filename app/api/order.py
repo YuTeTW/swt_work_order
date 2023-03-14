@@ -78,7 +78,6 @@ async def create_a_order(order_create: OrderCreateModel, background_tasks: Backg
 # 取得所有工單
 # @router.get("/order/all", response_model=List[OrderViewModel])
 @router.get("/order/all")
-
 def get_all_orders(start_time: Optional[str] = None, end_time: Optional[str] = None,
                    db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
@@ -282,14 +281,14 @@ async def delete_picture(order_id: int, file_name: str,
 
 
 # 輸出pdf
-@router.get("/order/report")
-async def upload_picture(client_id: int, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
+@router.get("/order/report/{client_id}")
+async def upload_picture(client_id: int, month: int, db: Session = Depends(get_db), Authorize: AuthJWT = Depends()):
     current_user = authorize_user(Authorize, db)
 
     if current_user.level > AuthorityLevel.engineer.value and current_user.id != client_id:
         raise HTTPException(status_code=401, detail="only can output yourself report")
 
-    return await get_report(db, client_id)
+    return await get_report(db, client_id, month)
 
 
 ##################################################

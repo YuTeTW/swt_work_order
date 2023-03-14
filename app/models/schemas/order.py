@@ -15,6 +15,7 @@ class OrderCreateModel(OrderBase):
     order_issue_id: int
     description: str
     detail: List[str]
+    serial_number: Optional[str]
     report_time: Optional[str]
 
     class Config:

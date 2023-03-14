@@ -1,4 +1,5 @@
 import os
+import random
 
 from fastapi import HTTPException
 from sqlalchemy import and_
@@ -50,8 +51,12 @@ def create_order(db: Session, reporter_id: int, company_name, order_create: Orde
         raise HTTPException(status_code=404, detail='default_engineer not found')
 
     try:
-        print(order_create.dict())
+        # print(order_create.dict())
         order_create.detail = str(order_create.detail)
+        # serial_number = order_create.serial_number
+        # order_create.serial_number = "0000000000"
+        # serial_number = order_create.client_id + random.randint(0, 9) + order_create.report_time.strftime('%m%d')
+        # print(serial_number)
         db_order = Order(**order_create.dict(),
                          reporter_id=reporter_id,
                          engineer_id=default_engineer.id)
